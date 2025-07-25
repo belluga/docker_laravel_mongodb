@@ -1,6 +1,6 @@
 [submodule "flutter-app"]
 	path = flutter-app
-	url = https://github.com/belluga/flutter_laravel_backend_boilerplate
+	url = https://github.com/belluga/festou_app
 [submodule "laravel-app"]
 	path = laravel-app
-	url = https://github.com/belluga/laravel_mongodb_boilerplate
+	url = https://github.com/belluga/festou_api
