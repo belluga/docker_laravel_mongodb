@@ -1,6 +1,8 @@
 [submodule "flutter-app"]
 	path = flutter-app
 	url = https://github.com/belluga/festou_app
+	ignore = all
 [submodule "laravel-app"]
 	path = laravel-app
 	url = https://github.com/belluga/festou_api
+	ignore = all
