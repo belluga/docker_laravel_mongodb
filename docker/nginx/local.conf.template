@@ -11,7 +11,7 @@ server {
 
     # Laravel API
     location ^~ /api/ {
-        alias /var/www/public/;
+        alias /var/www/laravel/;
         try_files $uri /index.php$is_args$args;
     }
 
