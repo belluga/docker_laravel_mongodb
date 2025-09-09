@@ -7,17 +7,19 @@ services:
       - ./laravel-app:/var/www
     networks:
       - app-network
+    user: "${UID}:${GID}"
 
   flutter:
-    image: ghcr.io/cirruslabs/flutter:latest
+    image: ghcr.io/cirruslabs/flutter:stable
     volumes:
       - ./flutter-app:/app
     working_dir: /app
+    mem_limit: 6g
     command: >
       sh -c "
         flutter pub get &&
-        mkdir -p build &&
         flutter build web &&
+        chown -R ${UID}:${GID} /app/build
         tail -f /dev/null
       "
     networks:

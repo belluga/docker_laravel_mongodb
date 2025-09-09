@@ -1,32 +1,18 @@
 #!/bin/bash
-set -x  # Enable debug output
+set -e # Exit immediately if a command exits with a non-zero status.
 
-# Create required directories
-mkdir -p /var/www/storage/logs/supervisor
-chown -R www-data:www-data /var/www/storage/logs
-chmod -R 775 /var/www/storage/logs
-
-# Verify environment
-echo "=== Environment Verification ==="
-whoami
-id
-pwd
-ls -la /var/www/storage/logs/
-
-# Se não existir o arquivo vendor/autoload.php, rode o composer install
-if [ ! -f vendor/autoload.php ]; then
-    echo ">>> Instalando dependências do Laravel..."
+# If vendor directory doesn't exist, run composer install
+if [ ! -f "vendor/autoload.php" ]; then
+    echo ">>> Installing Laravel dependencies..."
     composer install --no-interaction --prefer-dist --optimize-autoloader
-    if [ ! -f .env ]; then
-        cp .env.example .env
-        php artisan key:generate
-    fi
+fi
+
+# If .env file doesn't exist, copy it and generate the key
+if [ ! -f ".env" ]; then
+    cp .env.example .env
+    php artisan key:generate
     php artisan config:cache
 fi
 
-chown -R www-data:www-data /var/www
-chmod -R 755 storage bootstrap/cache
-
-# Start services
-echo "=== Starting Services ==="
+# Execute the main command passed from docker-compose (php-fpm)
 exec "$@"
