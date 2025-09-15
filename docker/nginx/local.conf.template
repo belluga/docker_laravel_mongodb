@@ -2,37 +2,34 @@ server {
     listen 80;
     server_name localhost;
 
-    # Flutter Web (Frontend)
+    # --- Bloco principal para a aplicação Flutter (Frontend) ---
+    # Este bloco continua sendo a regra principal para a home.
     location / {
         root /var/www/flutter;
         index index.html;
         try_files $uri $uri/ /index.html;
     }
 
-    # Laravel API
-    location ^~ /api/ {
-        alias /var/www/laravel/;
-        try_files $uri /index.php$is_args$args;
+    # --- Bloco para os arquivos de Storage do Laravel ---
+    # Adicionamos este bloco para servir os ícones e outros uploads.
+    location ^~ /storage/ {
+        # O 'alias' aponta para o diretório físico onde o link simbólico estaria.
+        alias /var/www/public/storage/;
+        try_files $uri $uri/ =404;
     }
 
-    # Laravel API
-    location ^~ /admin/api/ {
-        alias /var/www/public/;
-        try_files $uri /index.php$is_args$args;
+    # --- Bloco para a API do Laravel e outros endpoints ---
+    # Este bloco lida com todas as outras requisições do backend.
+    location ~ ^/(api|admin/api|initialize|manifest\.json|favicon\.ico|icon) {
+        root /var/www/public;
+        try_files $uri /index.php?$query_string;
     }
 
-    # Laravel API
-    location ^~ /initialize {
-        alias /var/www/public/;
-        try_files $uri /index.php$is_args$args;
-    }
-
-    # PHP para Laravel (fallback, se necessário)
+    # Bloco para processar todos os arquivos .php
     location ~ \.php$ {
         root /var/www/public;
-        include fastcgi_params;
         fastcgi_pass app:9000;
-        fastcgi_index index.php;
+        include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
     }
 }
