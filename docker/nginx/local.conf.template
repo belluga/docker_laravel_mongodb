@@ -1,35 +1,86 @@
 server {
     listen 80;
     server_name localhost;
+    
+    # Increase client max body size for file uploads
+    client_max_body_size 100M;
 
-    # --- Bloco principal para a aplicação Flutter (Frontend) ---
-    # Este bloco continua sendo a regra principal para a home.
-    location / {
-        root /var/www/flutter;
-        index index.html;
-        try_files $uri $uri/ /index.html;
+    # Set the default root for the Laravel application
+    root /var/www/public;
+    index index.php index.html;
+
+    # --- Named location for Laravel fallback ---
+    # This centralizes the logic for passing requests to Laravel's front controller.
+    location @laravel {
+        rewrite ^ /index.php$is_args$args last;
     }
 
-    # --- Bloco para os arquivos de Storage do Laravel ---
-    # Adicionamos este bloco para servir os ícones e outros uploads.
+    # --- Flutter Web (Frontend) ---
+    # This is the primary catch-all location.
+    location / {
+        root /var/www/flutter;
+        try_files $uri $uri/ /index.html;
+        
+        # Add headers for better caching on Flutter's static assets
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+    }
+
+    # --- Laravel Storage (Public file access) ---
+    # Has high priority to ensure it's checked before the Flutter location.
     location ^~ /storage/ {
-        # O 'alias' aponta para o diretório físico onde o link simbólico estaria.
-        alias /var/www/public/storage/;
+        # 'alias' maps the URL directly to the physical storage path from the volume.
+        alias /var/www/storage/app/public/;
+        
+        expires 1y;
+        add_header Cache-Control "public";
+        add_header X-Content-Type-Options nosniff;
+        add_header X-Frame-Options DENY;
+        
+        # If the file doesn't exist, return a 404.
         try_files $uri $uri/ =404;
     }
 
-    # --- Bloco para a API do Laravel e outros endpoints ---
-    # Este bloco lida com todas as outras requisições do backend.
-    location ~ ^/(api|admin/api|initialize|manifest\.json|favicon\.ico|icon) {
-        root /var/www/public;
-        try_files $uri /index.php?$query_string;
+    # --- Laravel API and other backend routes ---
+    # These also have high priority. If the file doesn't exist, they fall back to Laravel.
+    location ^~ /api/ {
+        try_files $uri @laravel;
+    }
+    location ^~ /admin/ {
+        try_files $uri @laravel;
+    }
+    location ^~ /initialize {
+        try_files $uri @laravel;
     }
 
-    # Bloco para processar todos os arquivos .php
+    # --- PHP-FPM Handler ---
+    # This is now a single, top-level block that handles all .php requests.
     location ~ \.php$ {
-        root /var/www/public;
-        fastcgi_pass app:9000;
+        try_files $uri =404;
         include fastcgi_params;
+        fastcgi_pass app:9000;
+        fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+        
+        # Timeouts for long-running requests
+        fastcgi_read_timeout 300;
+        fastcgi_send_timeout 300;
     }
+
+    # --- Security Rules ---
+    location ~ /\. {
+        deny all;
+    }
+    location ~ /(vendor|storage|bootstrap|config|database|resources|routes|tests)/ {
+        deny all;
+    }
+
+    # --- Gzip Compression ---
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
 }

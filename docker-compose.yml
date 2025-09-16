@@ -20,7 +20,8 @@ services:
       sh -c "
         flutter pub get &&
         flutter build web &&
-        chown -R ${UID}:${GID} /app/build
+        chown -R ${UID}:${GID} /app/build &&
+        chmod -R 755 /app/build &&
         tail -f /dev/null
       "
     networks:
@@ -35,7 +36,7 @@ services:
     volumes:
       - ./laravel-app:/var/www
       - ./flutter-app/build/web:/var/www/flutter
-      - app-storage:/var/www/storage/app/public
+      - app-storage:/var/www/storage
       - certbot-data:/etc/letsencrypt
       - certbot-challenge:/var/www/certbot
     depends_on:
