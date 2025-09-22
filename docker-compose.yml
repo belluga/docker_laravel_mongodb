@@ -8,7 +8,6 @@ services:
       - app-storage:/var/www/storage
     networks:
       - app-network
-    user: "${UID}:${GID}"
 
   flutter:
     image: ghcr.io/cirruslabs/flutter:stable
