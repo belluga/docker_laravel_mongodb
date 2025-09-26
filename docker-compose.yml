@@ -14,7 +14,7 @@ services:
     volumes:
       - ./flutter-app:/app
     working_dir: /app
-    mem_limit: 6g
+    mem_limit: 2g
     command: >
       sh -c "
         flutter pub get &&
