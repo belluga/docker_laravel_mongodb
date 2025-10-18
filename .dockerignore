@@ -1,2 +1,12 @@
 ### All Application files
 # application/*
+
+# Ignore Laravel's public storage symlink
+laravel-app/public/storage
+
+# Ignore vendor directories
+laravel-app/vendor
+vendor
+
+# Ignore Node.js dependencies
+node_modules
