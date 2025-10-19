@@ -83,6 +83,10 @@
 | Identity | POST /v1/auth/logout | Terminate access across devices, emitting audit events. | Defined | Supports anonymous context conversion cleanup. |
 | Catalog | POST /admin/api/v1/catalog/items | Author catalog entities (offerings, courses, products) with scheduling and pricing metadata. | Defined | Tenant-scoped; enforces capability activation checks. |
 | Learning | POST /api/v1/learning/enrollments | Enroll identity actors or anonymous visitors (trial mode) into curricula. | Defined | Supports conversion of anonymous sessions into identities. |
+| Learning | POST /admin/api/v1/learning/courses/{course_id}/drip-policies | Capture or revise the drip configuration attached to a course. | Defined | Applies template-based release strategies and initialization overrides. |
+| Learning | POST /api/v1/learning/cohorts/{cohort_id}/drip-schedule/preview | Simulate the cohort schedule for planning communications and QA. | Defined | Returns resolved release timestamps per snapshot node. |
+| Learning | GET /api/v1/learning/enrollments/{enrollment_id}/drip | Deliver the learner-facing drip state, including upcoming releases. | Defined | Honors role-based access; derived from `enrollment_drip_states`. |
+| Learning | POST /api/v1/learning/enrollments/{enrollment_id}/drip/recalculate | Rebuild the learner drip state after manual adjustments. | Defined | Triggers asynchronous recalculation respecting gating and overrides. |
 | Checkout | POST /api/v1/checkout/intents | Create payment intent with cart snapshot, pricing adjustments, and compliance flags. | Defined | Accepts optional anonymous session identifier. |
 | Analytics | GET /admin/api/v1/reports/activity | Provide aggregated interaction metrics across anonymous and authenticated flows. | Defined | Offers filterable views by module, tenant, account. |
 | Artists Empowerment | POST /v1/artists | Register artist profiles and trigger verification workflow. | Defined | Creates artist records and enqueues verification tasks. |
