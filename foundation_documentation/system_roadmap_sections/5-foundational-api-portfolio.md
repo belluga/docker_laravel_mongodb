@@ -1,6 +1,11 @@
 ## 5. Foundational API Portfolio
 | Domain | Endpoint | Description | API Status | Notes |
 | --- | --- | --- | --- | --- |
+| Foundation Control Plane | POST /admin/api/v1/tenants | Provision tenant, bootstrap manifest, and seed landlord credentials. | Defined | Emits `TenantProvisioned` and audit trail entries. |
+| Foundation Control Plane | GET /admin/api/v1/tenants/{tenant_id} | Retrieve tenant profile, manifests, and operational status snapshot. | Defined | Requires `Landlord:PlatformAdmin` ability. |
+| Foundation Control Plane | POST /admin/api/v1/tenants/{tenant_id}/accounts | Create tenant account with localized policies and ability templates. | Defined | Validates uniqueness of `account_code` per tenant. |
+| Foundation Control Plane | PUT /admin/api/v1/tenants/{tenant_id}/capabilities | Publish capability manifest state for the tenant. | Defined | Versioned manifest diff returned on success. |
+| Foundation Control Plane | PUT /api/v1/accounts/{account_slug}/abilities | Apply account ability template assignments and overrides. | Defined | Tenant configuration admins only; emits `AbilityTemplateApplied`. |
 | Initialization | GET /v1/initialize | Deliver tenant manifest, capability toggles, theming, and telemetry configuration. | Defined | Consumed by Flutter bootstrap and other clients. |
 | Anonymous Experience | GET /v1/public/catalog | List public offerings, courses, or content with localization and pagination. | Defined | Supports anonymous device context and geo filters. |
 | Anonymous Experience | POST /v1/public/sessions | Register anonymous session with device fingerprint, consent flags, and locale. | Defined | Issues anonymous token for rate limiting and telemetry correlation. |
