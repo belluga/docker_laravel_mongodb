@@ -65,6 +65,7 @@
 | Catalog | Structured representation of offerings, courses, and content assets delivered through shared backend/frontend libraries. | Capability Module, Interaction Record | P1 | Not Started |
 | Learning | Learner enrollment, curriculum management, assessment tracking with pluggable services and presentation kits. | Account, Identity Actor, Interaction Record | P1 | Not Started |
 | Artists Empowerment | Artist lifecycle, fanbase ownership, rider management, and performance collaboration tooling. | Artist Profile, Fan Identity, Fan Membership Tier | P2 | In Design |
+| Invitation Threads | Canonical invitation orchestration, RSVP tracking, and viral propagation analytics. | Invitation Thread, Invitation Node, Invitee Profile | P2 | Planned |
 | Checkout | Cart orchestration, payment intents, transaction ledger wrapped in configurable gateway adapters. | Interaction Record, Identity Actor | P3 | Not Started |
 | Intelligence | Analytics pipelines, recommendations, lifecycle automation exposed as optional capability libraries. | Capability Module, Interaction Record | P4 | Not Started |
 
@@ -93,6 +94,13 @@
 | Artists Empowerment | POST /v1/artists/{artist_id}/fanbase/campaigns | Schedule direct engagement campaigns to targeted fan cohorts. | Defined | Coordinates notification service dispatch with consent checks. |
 | Artists Empowerment | POST /v1/artist-performance-requests | Submit booking requests linking hosts and artist formations. | Defined | Initiates negotiation and contract workflows. |
 | Artists Empowerment | PUT /v1/artists/{artist_id}/fanbase/members/{fan_id}/preferences | Update fan consent and channel preferences. | Defined | Syncs with consent registry and suppresses unauthorized campaigns. |
+| Artists Empowerment | GET /v1/guarappari/artists | Deliver showcase-ready artist payloads to Guar[APP]ari surfaces. | Defined | Read-only projection; prevents data duplication. |
+| Invitation Threads | POST /v1/invitations | Create invitation threads with dispatch plans. | Defined | Canonical invitation authoring endpoint. |
+| Invitation Threads | POST /v1/invitations/{invitation_id}/invitees | Append invitees or referrals to existing threads. | Defined | Extends threads without duplication. |
+| Invitation Threads | POST /v1/invitations/{invitation_id}/dispatch | Trigger or resume dispatch for scheduled nodes. | Defined | Orchestrates multi-channel delivery. |
+| Invitation Threads | POST /v1/invitations/{invitation_id}/rsvp | Record RSVP outcomes tied to invitation tokens. | Defined | Feeds analytics and capacity planning. |
+| Invitation Threads | GET /v1/invitations/{invitation_id}/analytics | Retrieve engagement metrics. | Defined | Supports campaign optimization. |
+| Invitation Threads | GET /v1/guarappari/invitations | Provide Guar[APP]ari invitation projections. | Defined | Read-only projection for client consumption. |
 
 **Field Definitions**
 - `API Status`: `Defined` - Contract documented in module specs; `Mocked` - Sandbox responses available; `Implemented` - Backend logic delivered; `Tested & Ready` - Automated and manual validation complete.
