@@ -64,6 +64,7 @@
 | Anonymous Experience | Public content delivery, device fingerprinting, progressive profiling, rate limiting via reusable middleware and UI widgets. | Anonymous Context, Interaction Record | P1 | Not Started |
 | Catalog | Structured representation of offerings, courses, and content assets delivered through shared backend/frontend libraries. | Capability Module, Interaction Record | P1 | Not Started |
 | Learning | Learner enrollment, curriculum management, assessment tracking with pluggable services and presentation kits. | Account, Identity Actor, Interaction Record | P1 | Not Started |
+| Artists Empowerment | Artist lifecycle, fanbase ownership, rider management, and performance collaboration tooling. | Artist Profile, Fan Identity, Fan Membership Tier | P2 | In Design |
 | Checkout | Cart orchestration, payment intents, transaction ledger wrapped in configurable gateway adapters. | Interaction Record, Identity Actor | P3 | Not Started |
 | Intelligence | Analytics pipelines, recommendations, lifecycle automation exposed as optional capability libraries. | Capability Module, Interaction Record | P4 | Not Started |
 
@@ -83,6 +84,15 @@
 | Learning | POST /api/v1/learning/enrollments | Enroll identity actors or anonymous visitors (trial mode) into curricula. | Defined | Supports conversion of anonymous sessions into identities. |
 | Checkout | POST /api/v1/checkout/intents | Create payment intent with cart snapshot, pricing adjustments, and compliance flags. | Defined | Accepts optional anonymous session identifier. |
 | Analytics | GET /admin/api/v1/reports/activity | Provide aggregated interaction metrics across anonymous and authenticated flows. | Defined | Offers filterable views by module, tenant, account. |
+| Artists Empowerment | POST /v1/artists | Register artist profiles and trigger verification workflow. | Defined | Creates artist records and enqueues verification tasks. |
+| Artists Empowerment | POST /v1/artists/{artist_id}/formations | Attach formation blueprints to an artist. | Defined | Supports semantic versioning for formations. |
+| Artists Empowerment | POST /v1/artists/{artist_id}/rider-packs | Publish rider requirements tied to specific formations. | Defined | Emits `ArtistRiderPublished` event for hosts. |
+| Artists Empowerment | POST /v1/artists/{artist_id}/availability | Publish availability windows for artist formations. | Defined | Drives discovery scheduling caches. |
+| Artists Empowerment | POST /v1/artists/{artist_id}/fanbase/members | Register or import a fan identity with consent artifacts. | Defined | Artists retain direct ownership of fan data. |
+| Artists Empowerment | POST /v1/artists/{artist_id}/fanbase/memberships | Author membership tiers and entitlements for fan communities. | Defined | Surfaces monetization structure for Commercial engine. |
+| Artists Empowerment | POST /v1/artists/{artist_id}/fanbase/campaigns | Schedule direct engagement campaigns to targeted fan cohorts. | Defined | Coordinates notification service dispatch with consent checks. |
+| Artists Empowerment | POST /v1/artist-performance-requests | Submit booking requests linking hosts and artist formations. | Defined | Initiates negotiation and contract workflows. |
+| Artists Empowerment | PUT /v1/artists/{artist_id}/fanbase/members/{fan_id}/preferences | Update fan consent and channel preferences. | Defined | Syncs with consent registry and suppresses unauthorized campaigns. |
 
 **Field Definitions**
 - `API Status`: `Defined` - Contract documented in module specs; `Mocked` - Sandbox responses available; `Implemented` - Backend logic delivered; `Tested & Ready` - Automated and manual validation complete.
