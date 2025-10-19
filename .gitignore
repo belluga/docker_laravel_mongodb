@@ -7,3 +7,7 @@ application/*
 !application/.gitkeep
 
 /.vscode/settings.json
+
+# AI Local helper
+AGENTS.md
+delphi-ai/
