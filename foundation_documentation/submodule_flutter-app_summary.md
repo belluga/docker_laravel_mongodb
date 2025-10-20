@@ -61,7 +61,7 @@
 ## 6. Key Integration Points / Screens
 
 * **Initialization Flow:** `InitializationModule` routes (`/init`, `/`) and registers controllers for landlord and tenant home screens; guards ensure tenant context before entering main surfaces.
-* **Authentication:** `AuthRepository` stores tokens in secure storage and calls `AuthBackendContract`. Actual Laravel backend adapter is stubbed; mock backend returns canned users.
+* **Authentication:** `AuthRepository` stores tokens in secure storage and calls `AuthBackendContract`, including flows for scoped anonymous identities and credential linking.
 * **Tenant Experiences:** Under `presentation/screens/tenants` – catalog (`lms`), notes, profile, schedule modules with controllers mapping repository outputs to widgets.
 * **Landlord Experience:** `presentation/screens/landlord/home_landlord` offers placeholder dashboards leveraging the same modular routing system.
 * **Theme & Branding:** `ThemeRepository` streams theme data into `MaterialApp.router`, supporting runtime theme swaps once initialization provides branding colors.
@@ -73,6 +73,6 @@
 * **Backend Gap:** The intended `LaravelBackend` implementation is entirely commented out; repositories rely on `mock_backend` classes. Live API wiring, error handling, and headers need completion before production usage.
 * **Guard Logic:** `TenantRouteGuard` and friends assume repositories are initialized; ensure repositories run `init()` early (current `ApplicationContract.init()` calls `super.init()` after base setup).
 * **Testing Coverage:** No integration or widget tests target the modular routing or repository logic yet; only default Flutter test scaffolding exists.
-* **Asset Management:** Branding/theme assets are expected under `assets/mock/` and `assets/images/`; pipeline for ingesting landlord-provided themes should connect to initialization manifest.
+* **Asset Management:** Branding/theme assets are expected under `assets/mock/` and `assets/images/`; pipeline for ingesting landlord-provided themes should consume scoped anonymous identity policies and associated theme endpoints.
 * **Build Tooling:** `flutter_launcher_icons` and `flutter_native_splash` configs are included but not fully parameterized; running the generators will require additional configuration.
 ```
