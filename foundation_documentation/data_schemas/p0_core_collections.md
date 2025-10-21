@@ -126,7 +126,7 @@ This reference codifies the canonical MongoDB collections required to deliver Ph
 ```json
 {
   "bsonType": "object",
-  "required": ["tenant_id", "identity_state", "anonymous_fingerprint", "account_assignments", "consents", "created_at", "updated_at"],
+  "required": ["tenant_id", "identity_state", "fingerprints", "account_assignments", "consents", "created_at", "updated_at"],
   "properties": {
     "tenant_id": { "bsonType": "objectId" },
     "display_name": { "bsonType": "string" },
@@ -139,7 +139,7 @@ This reference codifies the canonical MongoDB collections required to deliver Ph
       "items": { "bsonType": "string" }
     },
     "identity_state": { "enum": ["anonymous", "verified"] },
-    "anonymous_fingerprint": {
+    "fingerprints": {
       "bsonType": "object",
       "required": ["hash", "first_seen_at"],
       "properties": {

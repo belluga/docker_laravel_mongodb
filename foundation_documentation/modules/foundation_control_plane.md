@@ -87,7 +87,7 @@
 | `emails` | Array<String> | Contact email addresses. | No | Partial unique index per tenant. |
 | `phones` | Array<String> | Contact phone numbers. | No | Partial unique index per tenant. |
 | `identity_state` | String | Lifecycle state of the identity. | Yes | Enum: `anonymous`, `verified`. |
-| `anonymous_fingerprint` | Document | Device fingerprint metadata captured when issuing anonymous identity. | Yes | Stores `hash`, `first_seen_at`, `last_seen_at`, `user_agent`. |
+| `fingerprints` | Document | Device fingerprint metadata captured when issuing anonymous identity. | Yes | Stores `hash`, `first_seen_at`, `last_seen_at`, `user_agent`. |
 | `account_assignments` | Array<Document> | Ability grants scoped to accounts. | Yes | Entries store `account_id`, `abilities`, `assigned_at`. |
 | `credentials` | Array<Document> | Linked credential providers. | Yes | Each entry stores provider metadata. |
 | `credentials.provider` | String | Credential provider ID (`password`, `google`, `apple`, etc.). | Yes | Multiple entries per provider allowed. |
@@ -159,7 +159,7 @@
 #### 3.7 Testing Strategy
 
 * **Unit Tests:** Cover tenant provisioning validators, anonymous identity issuance policies, credential linking invariants, and identity_state transitions using PHPUnit.
-* **Integration Tests:** Exercise initialization bootstrap, tenant provisioning, account creation, anonymous identity issuance, credential linking/unlinking, and account user promotion flows across landlord and tenant Mongo connections.
+* **Integration Tests:** Exercise initialization bootstrap, tenant provisioning, account creation, anonymous identity issuance, credential linking/unlinking, and account user promotion flows across landlord and tenant Mongo connections. Each critical flow is verified against primary and secondary tenants to catch cross-tenant regression risk.
 * **Contract Tests:** Pact-based tests for `/v1/initialize`, `/v1/anonymous/identities`, `/v1/account-users`, `/v1/account-users/{user_id}/credentials`, and `/v1/auth/token` shared with Flutter and other clients; schema snapshots stored in repo.
 * **Performance Tests:** k6 scenarios simulating parallel tenant provisioning bursts (up to five concurrent) and sustained anonymous identity issuance + credential linking + promotion throughput (300 RPS) to validate SLO adherence.
 
@@ -175,6 +175,7 @@
 * **Configuration Management:** Store landlord DSNs and anonymized token policies in environment variables. Tenant database switching leverages Spatie Multitenancy’s `TenantDatabaseManager`; capability toggles hydrate from configuration caches warmed during boot. Partial indexes on `account_users.emails`/`phones` and compound indexes on `interaction_records` are declared via migration classes.
 * **Deployment Pipeline:** CI executes static analysis, unit, integration, and contract suites before publishing Docker images. CD pipelines migrate landlord schema, iterate tenants with `php artisan tenants:migrate`, seed capability toggles, then run smoke tests for `/v1/initialize`, `/v1/tenants`, `/v1/anonymous/identities`, and `/v1/account-users`.
 * **Ingress Synchronization:** Anonymous identity, tenant APIs, and authentication endpoints share the `/v1` prefix; nginx and gateway manifests mirror this path structure to avoid drift across environments.
+* **Document Modeling Playbook:** Favor the native `DocumentModel` casting behavior for embedded BSON arrays/documents (e.g., `fingerprints`, `credentials`) and introduce custom casts only when normalization is essential. This avoids double-encoding, preserves ObjectId fidelity, and keeps multi-device fingerprint histories consistent across sessions.
 
 ## 6. Decision Log
 
