@@ -126,7 +126,7 @@ This reference codifies the canonical MongoDB collections required to deliver Ph
 ```json
 {
   "bsonType": "object",
-  "required": ["tenant_id", "identity_state", "fingerprints", "account_assignments", "consents", "created_at", "updated_at"],
+  "required": ["tenant_id", "identity_state", "fingerprints", "consents", "created_at", "updated_at"],
   "properties": {
     "tenant_id": { "bsonType": "objectId" },
     "display_name": { "bsonType": "string" },
@@ -138,29 +138,19 @@ This reference codifies the canonical MongoDB collections required to deliver Ph
       "bsonType": "array",
       "items": { "bsonType": "string" }
     },
-    "identity_state": { "enum": ["anonymous", "verified"] },
+    "identity_state": { "enum": ["anonymous", "registered", "validated"] },
     "fingerprints": {
-      "bsonType": "object",
-      "required": ["hash", "first_seen_at"],
-      "properties": {
-        "hash": { "bsonType": "string", "pattern": "^[a-f0-9]{64}$" },
-        "first_seen_at": { "bsonType": "date" },
-        "last_seen_at": { "bsonType": "date" },
-        "user_agent": { "bsonType": "string" }
-      }
-    },
-    "account_assignments": {
       "bsonType": "array",
       "items": {
         "bsonType": "object",
-        "required": ["account_id", "abilities", "assigned_at"],
+        "required": ["hash", "first_seen_at"],
         "properties": {
-          "account_id": { "bsonType": "objectId" },
-          "abilities": {
-            "bsonType": "array",
-            "items": { "bsonType": "string" }
-          },
-          "assigned_at": { "bsonType": "date" }
+          "hash": { "bsonType": "string", "pattern": "^[a-f0-9]{64}$" },
+          "first_seen_at": { "bsonType": "date" },
+          "last_seen_at": { "bsonType": "date" },
+          "user_agent": { "bsonType": "string" },
+          "locale": { "bsonType": "string" },
+          "metadata": { "bsonType": "object" }
         }
       }
     },
@@ -192,8 +182,8 @@ This reference codifies the canonical MongoDB collections required to deliver Ph
         "bsonType": "object",
         "required": ["from_state", "to_state", "promoted_at"],
         "properties": {
-          "from_state": { "enum": ["anonymous", "verified"] },
-          "to_state": { "enum": ["anonymous", "verified"] },
+        "from_state": { "enum": ["anonymous", "registered", "validated"] },
+        "to_state": { "enum": ["anonymous", "registered", "validated"] },
           "promoted_at": { "bsonType": "date" },
           "operator_id": { "bsonType": "objectId" }
         }
@@ -206,8 +196,7 @@ This reference codifies the canonical MongoDB collections required to deliver Ph
 **Indexes**
 - `{ tenant_id: 1, "emails": 1 }` (partial unique, `emails` exists).
 - `{ tenant_id: 1, "phones": 1 }` (partial unique, `phones` exists).
-- `{ tenant_id: 1, identity_state: 1 }` – accelerates anonymous → verified promotion reporting.
-- `{ tenant_id: 1, "account_assignments.account_id": 1 }` – supports ability audits per account.
+- `{ tenant_id: 1, identity_state: 1 }` – accelerates lifecycle reporting across anonymous, registered, and validated states.
 - `{ tenant_id: 1, "credentials.provider": 1, "credentials.subject": 1 }` (unique) – allows multiple credentials per provider on one identity while keeping each external subject exclusive to a single identity.
 
 **Retention**
@@ -225,7 +214,7 @@ This reference codifies the canonical MongoDB collections required to deliver Ph
     "tenant_id": { "bsonType": "objectId" },
     "account_id": { "bsonType": "objectId" },
     "actor_id": { "bsonType": "objectId" },
-    "actor_state": { "enum": ["anonymous", "verified"] },
+    "actor_state": { "enum": ["anonymous", "registered", "validated"] },
     "interaction_type": { "bsonType": "string" },
     "capability_origin": { "bsonType": "string" },
     "payload": { "bsonType": "object" },
@@ -262,3 +251,66 @@ This reference codifies the canonical MongoDB collections required to deliver Ph
 
 - `foundation_documentation/modules/foundation_control_plane.md`
 - `foundation_documentation/system_roadmap_sections/phase_narratives/p0-boilerplate-genesis.md`
+
+### 3.5 landlord_users
+
+**Validation Schema (excerpt)**
+
+`json
+{
+  "bsonType": "object",
+  "required": ["name", "emails", "identity_state", "credentials", "created_at", "updated_at"],
+  "properties": {
+    "name": { "bsonType": "string", "minLength": 3, "maxLength": 120 },
+    "emails": {
+      "bsonType": "array",
+      "items": { "bsonType": "string", "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "phones": {
+      "bsonType": "array",
+      "items": { "bsonType": "string" }
+    },
+    "identity_state": { "enum": ["registered", "validated"] },
+    "credentials": {
+      "bsonType": "array",
+      "items": {
+        "bsonType": "object",
+        "required": ["provider", "subject", "linked_at"],
+        "properties": {
+          "provider": { "bsonType": "string" },
+          "subject": { "bsonType": "string" },
+          "secret_hash": { "bsonType": "string" },
+          "metadata": { "bsonType": "object" },
+          "linked_at": { "bsonType": "date" },
+          "last_used_at": { "bsonType": "date" },
+          "verified_at": { "bsonType": "date" }
+        }
+      }
+    },
+    "promotion_audit": {
+      "bsonType": "array",
+      "items": {
+        "bsonType": "object",
+        "required": ["from_state", "to_state", "promoted_at"],
+        "properties": {
+          "from_state": { "enum": ["registered", "validated"] },
+          "to_state": { "enum": ["registered", "validated"] },
+          "promoted_at": { "bsonType": "date" },
+          "operator_id": { "bsonType": "objectId" }
+        }
+      }
+    }
+  }
+}
+`
+
+**Indexes**
+- { emails: 1 } (partial unique, mails exists).
+- { identity_state: 1 } – supports reporting across registered and validated operators.
+- { "credentials.provider": 1, "credentials.subject": 1 } (unique) – prevents a credential subject from linking to multiple landlord identities.
+
+**Retention**
+- Landlord identities persist indefinitely; promotion audits record every transition from registered to validated. Anonymous issuance is not supported for landlord operators.
+

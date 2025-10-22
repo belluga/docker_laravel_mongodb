@@ -3,7 +3,7 @@
 ### 2.1 Phase Cadence
 | Phase Code | Phase Name | Focus | Exit Criteria | Dependencies | Lifecycle Status |
 | --- | --- | --- | --- | --- | --- |
-| P0 | Boilerplate Genesis | Establish multi-tenant landlord/tenant scaffolding, identity lifecycle (anonymous → verified) handling, and core capability manifests. | Tenant provisioning contracts, identity_state model (including anonymous state) documented, ability catalog, infrastructure automation runbooks authored. | None | In Design |
+| P0 | Boilerplate Genesis | Establish multi-tenant landlord/tenant scaffolding, identity lifecycle (anonymous → registered → validated) handling, and core capability manifests. | Tenant provisioning contracts, identity_state model (including anonymous state) documented, ability catalog, infrastructure automation runbooks authored. | None | In Design |
 | P1 | Capability Baseline | Define reusable modules (Identity, Open Experience Access, Catalog, Learning, Checkout) with documented APIs and data schemas. | Module documents authored, request/response DTOs finalized, module activation configs delivered. | P0 | Not Started |
 | P2 | Experience Orchestration | Align Flutter integration, public discovery flows, and authenticated workspaces with module contracts. | Initialization, open (anonymous-state) browsing, enrollment, and authenticated dashboards functioning against mocked services. | P1 | Not Started |
 | P3 | Commerce and Compliance | Deliver financial flows, consent management, audit trails, and operational tooling applicable to all products. | Checkout ledger schema, payment intent APIs, consent registry, audit pipelines documented and validated. | P2 | Not Started |

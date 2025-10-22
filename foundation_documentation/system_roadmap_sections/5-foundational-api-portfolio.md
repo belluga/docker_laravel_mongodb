@@ -10,8 +10,8 @@
 | Environment | GET /environment | Retrieve landlord or tenant branding/theme configuration. | Implemented | Canonical endpoint used by clients; replaces legacy `/branding`. |
 | Initialization | POST /api/v1/initialize | Bootstrap landlord, first tenant, and initial landlord admin identity; returns Sanctum token. | Implemented | Enforces single-run guard via `isInitialized` check. |
 | Initialization | GET /api/v1/initialize | Report whether initialization has already run. | Implemented | Returns 403 until initialization completes. |
-| Identity (Landlord) | POST /admin/api/v1/auth/login | Issue Sanctum token for landlord operator. | Implemented | Email/password credentials stored in landlord cluster. |
-| Identity (Landlord) | POST /admin/api/v1/auth/logout | Revoke landlord token. | Implemented | Requires active token; clears abilities. |
+| Identity (Landlord) | POST /admin/api/v1/auth/login | Issue Sanctum token for landlord operator. | Implemented | Email/password credentials stored in landlord cluster; identities begin as `registered` and promote to `validated` once credentials are confirmed. |
+| Identity (Landlord) | POST /admin/api/v1/auth/logout | Revoke landlord token. | Implemented | Requires active token; clears abilities. Anonymous issuance is not available in landlord scope. |
 | Identity (Tenant) | POST /api/v1/auth/login | Authenticate tenant/account operators and return token plus identity_state. | Implemented | Uses `account_users` collection; anonymous state until contact verified. |
 | Identity (Tenant) | POST /api/v1/auth/logout | Revoke tenant/account token. | Implemented | Invalidates current device session. |
 | Identity (Tenant) | POST /api/v1/auth/password_token | Issue password reset token for tenant operator. | Implemented | Persists in `password_reset_tokens`. |

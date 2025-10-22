@@ -11,14 +11,14 @@
 
 ### MOD-001: `foundation_control_plane`
 
-* **Purpose Statement:** Establish the authoritative Laravel service surface for provisioning tenants, segmenting accounts, advancing the identity_state lifecycle (anonymous → verified), and issuing scoped anonymous identities that guard early interactions.
+* **Purpose Statement:** Establish the authoritative Laravel service surface for provisioning tenants, segmenting accounts, advancing the identity_state lifecycle (anonymous → registered → validated), and issuing scoped anonymous identities that guard early interactions.
 * **Core Entities:** Tenant, Account, Account User (Identity Actor), Capability Toggle, Anonymous Access Policy.
 * **Key Workflows:** Tenant creation with capability configuration, account provisioning, scoped anonymous identity issuance, identity promotion to verified, ability management for clients.
 * **External Dependencies:** MongoDB (control-plane database and tenant-scoped logical databases), Laravel Sanctum, environment-configured secrets.
 * **Service-Level Objectives:** P99 latency = 350 ms for read endpoints, = 1.2 s for provisioning writes; availability = 99.5%; successful tenant bootstrap completion = 99.9% within 60 s.
 
 #### 3.1 Domain Rules
-* **Invariants:** Tenant slugs are immutable once provisioned and map 1:1 to logical Mongo databases. Each tenant must retain at least one administrative account capable of issuing ability grants and promoting identities. Account users hold a single canonical document per tenant and transition identity_state strictly in order (`anonymous` → `verified`). Scoped anonymous identities are created at first stateful interaction and remain until promotion or expiry. Credential attachments (email/password, OAuth providers) may include multiple entries per provider for a single identity, but every credential must map to exactly one `account_users._id`; cross-identity duplication is disallowed.
+* **Invariants:** Tenant slugs are immutable once provisioned and map 1:1 to logical Mongo databases. Each tenant must retain at least one administrative account capable of issuing ability grants and promoting identities. Account users hold a single canonical document per tenant and transition identity_state strictly in order (`anonymous` → `registered` → `validated`). Scoped anonymous identities are created at first stateful interaction and remain until promotion or expiry. Credential attachments (email/password, OAuth providers) may include multiple entries per provider for a single identity, but every credential must map to exactly one `account_users._id`; cross-identity duplication is disallowed.
 * **Validation Rules:** Tenant and account slugs follow `^[a-z0-9-]{3,32}$`. Account user email and phone arrays enforce uniqueness via partial indexes. Device fingerprints captured for anonymous-state auditing are SHA-256 hashes. Capability toggles accept only module identifiers registered in the capability catalogue. External credential providers must be registered in the capability catalogue before links are permitted.
 * **Authorization Requirements:** Landlord provisioning endpoints require Sanctum abilities `tenants:create` or `tenants:read`. Tenant-scoped administrative actions rely on abilities such as `accounts:*` and `account-users:*`. Anonymous actors obtain scoped access only by requesting `/v1/anonymous/identities`, which issues short-lived tokens without mutating tenant state.
 
@@ -34,7 +34,7 @@
 | `/v1/anonymous/identities` | POST | Issue scoped anonymous identity token bound to tenant policies. | Guest | `AnonymousIdentityRequest` | `AnonymousIdentityResource` |
 | `/v1/accounts` | POST | Create account within the current tenant and seed default abilities. | `accounts:create` | `AccountProvisionPayload` | `AccountResource` |
 | `/v1/accounts/{account_id}` | GET | Retrieve account metadata and capability toggles. | `accounts:read` | `n/a` | `AccountResource` |
-| `/v1/account-users` | POST | Register account user; defaults to identity_state `anonymous`. | `account-users:create` | `AccountUserPayload` | `AccountUserResource` |
+| `/v1/account-users` | POST | Register account user; defaults to identity_state `registered`. | `account-users:create` | `AccountUserPayload` | `AccountUserResource` |
 | `/v1/account-users/{user_id}` | PATCH | Promote account user to verified state and update ability grants. | `account-users:update` | `AccountUserPromotionPayload` | `AccountUserResource` |
 
 #### 3.3 Data Schemas
@@ -88,7 +88,6 @@
 | `phones` | Array<String> | Contact phone numbers. | No | Partial unique index per tenant. |
 | `identity_state` | String | Lifecycle state of the identity. | Yes | Enum: `anonymous`, `verified`. |
 | `fingerprints` | Document | Device fingerprint metadata captured when issuing anonymous identity. | Yes | Stores `hash`, `first_seen_at`, `last_seen_at`, `user_agent`. |
-| `account_assignments` | Array<Document> | Ability grants scoped to accounts. | Yes | Entries store `account_id`, `abilities`, `assigned_at`. |
 | `credentials` | Array<Document> | Linked credential providers. | Yes | Each entry stores provider metadata. |
 | `credentials.provider` | String | Credential provider ID (`password`, `google`, `apple`, etc.). | Yes | Multiple entries per provider allowed. |
 | `credentials.subject` | String | Provider-specific subject identifier. | Yes | Unique per provider. |
@@ -104,11 +103,33 @@
 
 **Field Definitions**
 
-* `identity_state`: `anonymous` (device fingerprint captured, limited abilities) or `verified` (contact point confirmed, full access granted).
-* `account_assignments[].abilities`: Array of ability slugs (e.g., `catalog:view`, `identity:promote`) validated against the capability catalogue.
+* `identity_state`: `anonymous` (device fingerprint captured, limited abilities), `registered` (contact recorded without validation), or `validated` (contact/credential confirmed; full access granted and promotion audit appended).
 * `credentials.provider`: Enumerated providers maintained in the capability catalogue (`password`, `google`, `apple`, `microsoft`, etc.). Multiple credentials from the same provider (e.g., several Gmail accounts) may link to one identity.
 * `credentials.subject`: Provider-specific identifier; uniqueness enforced per provider so a credential cannot link to multiple identities.
 * `credentials.secret_hash`: Optional hashed secret for password credentials; multiple password entries may reuse the same hash when the user elects a shared password across email aliases.
+
+##### Collection: `landlord_users`
+
+**Schema Definition**
+
+| Field | Type | Description | Required | Notes |
+|-------|------|-------------|----------|-------|
+| `_id` | ObjectId | Primary identifier stored in the landlord database. | Yes | |
+| `name` | String | Operator display name. | Yes | |
+| `emails` | Array<String> | Contact email addresses used for landlord authentication. | Yes | Lowercased on write; partial unique index per landlord. |
+| `phones` | Array<String> | Optional contact phone numbers. | No | Partial unique index per landlord. |
+| `identity_state` | String | Landlord identity lifecycle state. | Yes | Enum: `registered`, `validated`. |
+| `credentials` | Array<Document> | Credential evidence linked to the landlord operator. | Yes | Each entry mirrors the tenant credential structure. |
+| `promotion_audit` | Array<Document> | History of landlord identity promotions. | Yes | Stores `from_state`, `to_state`, `promoted_at`, optional `operator_id`. |
+| `tenant_roles` | Array<Document> | Embedded tenant role assignments. | Yes | Snapshot of permissions granted per tenant. |
+| `verified_at` | Date | Timestamp of first promotion to `validated`. | No | |
+| `created_at` | Date | Creation timestamp. | Yes | |
+| `updated_at` | Date | Last update timestamp. | Yes | |
+
+**Field Definitions**
+
+* `identity_state`: `registered` (operator created, credential captured) or `validated` (credential verified; promotion audit appended). Anonymous issuance is not available for landlord identities.
+* `credentials`: Same providers and document shape as tenant `account_users.credentials`, enabling multiple login methods per landlord operator.
 
 ##### Collection: `interaction_records`
 
@@ -181,7 +202,7 @@
 
 | Decision ID | Date | Module(s) | Summary | Status | Rationale | Linked Evidence |
 |-------------|------|-----------|---------|--------|-----------|-----------------|
-| DEC-001 | 2025-10-19 | foundation_control_plane | Adopt identity_state lifecycle (anonymous → verified) anchored on `account_users` with partial unique contact indexes. | Ratified | Aligns control plane behavior with roadmap decisions and Flutter expectations. | `foundation_documentation/system_roadmap_sections/2-delivery-framework.md` |
+| DEC-001 | 2025-10-19 | foundation_control_plane | Adopt identity_state lifecycle (anonymous → registered → validated) anchored on `account_users` with partial unique contact indexes. | Ratified | Aligns control plane behavior with roadmap decisions and Flutter expectations. | `foundation_documentation/system_roadmap_sections/2-delivery-framework.md` |
 
 ## 7. Appendices
 
