@@ -35,7 +35,7 @@
   * `/api/v1/accounts/{account_slug}/...` (middleware `tenant` + `account`) for account-scoped actions.
 * **Data Reality:** Migrations provision:
   * Landlord: `tenants` (unique `slug`, `subdomain`, `app_domains`), `domains`, `landlord_users`, `landlord_roles`.
-  * Tenant: `accounts` (`slug`, `document`, timestamps), `account_users` (array `emails`/`phones`, embedded `account_roles`, unique partial indexes), `roles`, `sessions`, `password_reset_tokens`.
+  * Tenant: `accounts` (`slug`, `document`, timestamps), `account_users` (array `emails`/`phones`, immutable `first_seen_at`, `registered_at` lifecyle markers, embedded `account_roles`, unique partial indexes), `roles`, `sessions`, `password_reset_tokens`.
   These differ from earlier documentation assumptions (no `capability_manifest_id`, no standalone `anonymous_sessions` collection yet).
 * **Controller-Centric Workflows:** Provisioning, branding, and role seeding live in `app/Http/Api/v1/Controllers`; the `Services` namespace is largely empty.
 
@@ -89,4 +89,7 @@
 * Branding upload stores files locally; remote storage/S3 wiring is not in place.
 * API v2 scaffolding (`routes/api/api_v2.php`) is empty.
 * Service layer stubs and `spatie/laravel-data` DTOs are mostly unused; consolidating business logic into dedicated services remains an open task.
+* Landlord and tenant validators now enforce canonical input ceilings (passwords 8–32 chars, display strings ≤255, descriptions ≤1000, email arrays ≤10 items with 255-char members, permission arrays ≤64, metadata arrays ≤20 entries/≈8 KB). Feature tests assert these guards as part of our input surface hardening mandate.
+* Landlord auth surface now rejects tenant Sanctum tokens (`/admin/api/auth/token_validate`) and auto-populates `promotion_audit` entries when operators elevate identities during landlord user creation, ensuring the audit trail lines up with foundation_control_plane documentation.
+* Anonymous → verified consolidation will migrate fingerprint histories into the canonical `account_users` document, archive the original anonymous snapshot in `merged_account_snapshots`, and hard-delete the source row to keep the live collection clean while preserving forensic evidence.
 ```

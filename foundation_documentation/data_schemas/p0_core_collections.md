@@ -13,6 +13,8 @@ This reference codifies the canonical MongoDB collections required to deliver Ph
 | `accounts` | Tenant database | Segments tenant context into workspace/group constructs with default abilities. | Foundation Control Plane |
 | `account_users` | Tenant database | Persists identity actors, anonymous fingerprints, and promotion audit history. | Foundation Control Plane |
 | `interaction_records` | Tenant database | Provides immutable ledger of anonymous and verified activity for audit and telemetry. | Foundation Control Plane |
+| `merged_account_snapshots` | Tenant database | Archives anonymous identity artifacts after consolidation into a verified account. | Foundation Control Plane |
+| `identity_merge_audits` | Tenant database | Captures consolidated identity outcomes with aggregated timelines and operator provenance. | Foundation Control Plane |
 
 ## 3. Schema Definitions
 
@@ -126,7 +128,7 @@ This reference codifies the canonical MongoDB collections required to deliver Ph
 ```json
 {
   "bsonType": "object",
-  "required": ["tenant_id", "identity_state", "fingerprints", "consents", "created_at", "updated_at"],
+  "required": ["tenant_id", "identity_state", "first_seen_at", "fingerprints", "consents", "created_at", "updated_at"],
   "properties": {
     "tenant_id": { "bsonType": "objectId" },
     "display_name": { "bsonType": "string" },
@@ -139,6 +141,8 @@ This reference codifies the canonical MongoDB collections required to deliver Ph
       "items": { "bsonType": "string" }
     },
     "identity_state": { "enum": ["anonymous", "registered", "validated"] },
+    "first_seen_at": { "bsonType": "date" },
+    "registered_at": { "bsonType": ["date", "null"] },
     "fingerprints": {
       "bsonType": "array",
       "items": {
@@ -200,9 +204,110 @@ This reference codifies the canonical MongoDB collections required to deliver Ph
 - `{ tenant_id: 1, "credentials.provider": 1, "credentials.subject": 1 }` (unique) – allows multiple credentials per provider on one identity while keeping each external subject exclusive to a single identity.
 
 **Retention**
-- Identities persist indefinitely. Deactivation is modeled by removing ability assignments while retaining promotion audit history.
+- Identities persist indefinitely. Deactivation is modeled by removing ability assignments while retaining promotion audit history. Anonymous entries promoted into registered/validated identities are removed from this collection after their full document snapshot is captured in `merged_account_snapshots`.
+Promotion audit entries embedded within `account_users` capture only lifecycle transitions (`anonymous` -> `registered` -> `validated`); merge attestations reside in the dedicated `identity_merge_audits` ledger.
+`first_seen_at` is immutable once recorded, representing the earliest footprint across anonymous and registered states. `registered_at` marks the first transition into `identity_state = registered` and is populated from the corresponding promotion audit entry; it remains `null` for anonymous identities.
 
-### 3.4 `interaction_records`
+### 3.4 `merged_account_snapshots`
+
+**Validation Schema (excerpt)**
+
+```json
+{
+  "bsonType": "object",
+  "required": ["tenant_id", "source_user_id", "merged_into", "identity_state", "snapshot", "merged_at"],
+  "properties": {
+    "tenant_id": { "bsonType": "objectId" },
+    "source_user_id": { "bsonType": "objectId" },
+    "merged_into": { "bsonType": "objectId" },
+    "identity_state": { "enum": ["anonymous", "registered", "validated"] },
+    "snapshot": { "bsonType": "object" },
+    "merged_at": { "bsonType": "date" },
+    "operator_id": { "bsonType": "objectId" },
+    "reason": { "bsonType": "string" }
+  }
+}
+```
+
+`snapshot` stores the complete `account_users` document (fingerprints, consents, credentials, metadata) exactly as it existed before consolidation. `reason` defaults to `"merged"` but can support additional archival scenarios.
+
+**Indexes**
+- `{ tenant_id: 1, source_user_id: 1 }` (unique) – prevents duplicate snapshots for the same anonymous identity.
+- `{ tenant_id: 1, merged_into: 1, merged_at: -1 }` – optimizes forensic investigation by canonical user and time window.
+
+**Retention**
+- Append-only. Retained per governance policy (default: indefinite) to support audits and incident response. Any purge must be coordinated with compliance stakeholders.
+
+### 3.5 `identity_merge_audits`
+
+**Validation Schema (excerpt)**
+
+```json
+{
+  "bsonType": "object",
+  "required": ["tenant_id", "canonical_user_id", "merged_source_ids", "consolidated_at", "timeline", "sources", "target_identity_state"],
+  "properties": {
+    "tenant_id": { "bsonType": "objectId" },
+    "canonical_user_id": { "bsonType": "objectId" },
+    "merged_source_ids": {
+      "bsonType": "array",
+      "minItems": 1,
+      "items": { "bsonType": "objectId" }
+    },
+    "consolidated_at": { "bsonType": "date" },
+    "operator": {
+      "bsonType": "object",
+      "properties": {
+        "id": { "bsonType": "objectId" },
+        "reason": { "bsonType": "string" }
+      }
+    },
+    "timeline": {
+      "bsonType": "object",
+      "properties": {
+        "first_seen_at": { "bsonType": "date" },
+        "last_seen_at": { "bsonType": "date" }
+      }
+    },
+    "sources": {
+      "bsonType": "array",
+      "minItems": 1,
+      "items": {
+        "bsonType": "object",
+        "required": ["source_user_id", "merged_at"],
+        "properties": {
+          "source_user_id": { "bsonType": "objectId" },
+          "snapshot_id": { "bsonType": "objectId" },
+          "merged_at": { "bsonType": "date" },
+          "first_seen_at": { "bsonType": "date" },
+          "last_seen_at": { "bsonType": "date" },
+          "promotion_audit": {
+            "bsonType": "array",
+            "items": { "bsonType": "object" }
+          }
+        }
+      }
+    },
+    "target_promotion_audit_before_merge": {
+      "bsonType": "array",
+      "items": { "bsonType": "object" }
+    },
+    "target_identity_state": { "enum": ["anonymous", "registered", "validated"] }
+  }
+}
+```
+
+`timeline.first_seen_at` records the earliest encounter timestamp observed across the canonical identity and all merged sources, while `timeline.last_seen_at` captures the most recent engagement prior to consolidation. `sources[].promotion_audit` preserves the historical lifecycle entries attached to each source identity before its removal from the live `account_users` collection.
+
+**Indexes**
+- `{ tenant_id: 1, canonical_user_id: 1, consolidated_at: -1 }` - enables rapid retrieval of consolidation events for a canonical identity.
+- `{ tenant_id: 1, merged_source_ids: 1 }` - supports reverse lookups when investigating a retired source identity.
+- `{ tenant_id: 1, "sources.source_user_id": 1 }` - aligns forensic queries that follow the lineage of a specific anonymous identity.
+
+**Retention**
+- Append-only ledger retained indefinitely. Each entry references the archival `merged_account_snapshots` document (via `sources[].snapshot_id`) to guarantee forensic completeness without reintroducing deleted anonymous records to the active identity surface.
+
+### 3.6 `interaction_records`
 
 **Validation Schema (excerpt)**
 
@@ -252,7 +357,7 @@ This reference codifies the canonical MongoDB collections required to deliver Ph
 - `foundation_documentation/modules/foundation_control_plane.md`
 - `foundation_documentation/system_roadmap_sections/phase_narratives/p0-boilerplate-genesis.md`
 
-### 3.5 landlord_users
+### 3.7 `landlord_users`
 
 **Validation Schema (excerpt)**
 
