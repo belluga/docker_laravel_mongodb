@@ -15,6 +15,7 @@
 | Identity (Tenant) | POST /api/v1/auth/login | Authenticate tenant/account operators and return token plus identity_state. | Implemented | Uses `account_users` collection; anonymous state until contact verified. |
 | Identity (Tenant) | POST /api/v1/auth/logout | Revoke tenant/account token. | Implemented | Invalidates current device session. |
 | Identity (Tenant) | POST /api/v1/auth/password_token | Issue password reset token for tenant operator. | Implemented | Persists in `password_reset_tokens`. |
+| Identity (Tenant) | POST /api/v1/auth/register/password | Register a password identity, merge nominated anonymous actors, and expose optimistic-lock conflicts as HTTP 409. | Implemented | Retries the merge three times; emits `identity_merge_conflicts_total` metric on exhaustion. |
 | Identity (Tenant) | POST /api/v1/anonymous/identities | Issue scoped anonymous identity token for fingerprinted guests. | Implemented | Reuses fingerprint to return the same actor; policies stored in tenant `anonymous_access_policy`. |
 | Account Management | POST /api/v1/accounts | Create tenant account (slug derived from name) and optional document identifier. | Implemented | Requires `accounts:create` ability. |
 | Account Management | PATCH /api/v1/accounts/{account_slug} | Update account display data and settings. | Implemented | Supports partial updates; respects soft-delete state. |

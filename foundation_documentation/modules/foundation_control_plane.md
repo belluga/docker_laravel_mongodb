@@ -1,5 +1,5 @@
 # Documentation: Foundation Control Plane Module
-**Version:** 1.2
+**Version:** 1.3
 
 ## 1. Module Index
 
@@ -19,8 +19,9 @@
 
 #### 3.1 Domain Rules
 * **Invariants:** Tenant slugs are immutable once provisioned and map 1:1 to logical Mongo databases. Each tenant must retain at least one administrative account capable of issuing ability grants and promoting identities. Account users hold a single canonical document per tenant and transition identity_state strictly in order (`anonymous` → `registered` → `validated`). Scoped anonymous identities are created at first stateful interaction and remain until promotion or expiry. Credential attachments (email/password, OAuth providers) may include multiple entries per provider for a single identity, but every credential must map to exactly one `account_users._id`; cross-identity duplication is disallowed.
-* **Anonymous Consolidation:** When an identity graduates from anonymous to registered/validated, the canonical `account_users` document absorbs all fingerprint history, consents, and metadata. The superseded anonymous records are copied verbatim into the archival `merged_account_snapshots` collection (including `merged_into`, `merged_at`, `operator_id`) and then hard-deleted from the live set so active queries never surface merged ghosts. The archival collection is append-only and subject to retention policies defined by governance. A companion `identity_merge_audits` ledger records the canonical user id, merged source ids, timeline aggregates, operator context, and preserved promotion history while leaving `promotion_audit` embedded on `account_users` dedicated to lifecycle transitions only.
+* **Anonymous Consolidation:** When an identity graduates from anonymous to registered/validated, the canonical `account_users` document absorbs all fingerprint history, consents, and metadata. The superseded anonymous records are copied verbatim into the archival `merged_account_snapshots` collection (including `merged_into`, `merged_at`, `operator_id`) and then hard-deleted from the live set so active queries never surface merged ghosts. The archival collection is append-only and subject to retention policies defined by governance. A companion `identity_merge_audits` ledger (capped at 16 MiB to bound growth) records the canonical user id, merged source ids, timeline aggregates, operator context, and preserved promotion history while leaving `promotion_audit` embedded on `account_users` dedicated to lifecycle transitions only.
 * **Identity Timeline Stewardship:** `account_users.first_seen_at` captures the earliest known interaction (anonymous or authenticated) and is immutable once established. `account_users.registered_at` records the first promotion into `identity_state = registered` and remains `null` while the identity is anonymous. Anonymous issuance, password registrations, and merge workflows must preserve these timestamps so downstream analytics trust the timeline.
+* **Optimistic Identity Writes:** Every mutation of the canonical `account_users` document operates through a monotonic `version` counter. Domain services read the current value, apply the merge payload, and issue a conditional write (`where('version', current)`) that increments the counter atomically. Callers retry transient conflicts up to three attempts; on exhaustion, the API surfaces HTTP 409 with guidance to re-run the registration or merge flow.
 * **Validation Rules:** Tenant and account slugs follow `^[a-z0-9-]{3,32}$`. Account user email and phone arrays enforce uniqueness via partial indexes. Device fingerprints captured for anonymous-state auditing are SHA-256 hashes. Capability toggles accept only module identifiers registered in the capability catalogue. External credential providers must be registered in the capability catalogue before links are permitted.
 * **Authorization Requirements:** Landlord provisioning endpoints require Sanctum abilities `tenants:create` or `tenants:read`. Tenant-scoped administrative actions rely on abilities such as `accounts:*` and `account-users:*`. Anonymous actors obtain scoped access only by requesting `/v1/anonymous/identities`, which issues short-lived tokens without mutating tenant state.
 
@@ -33,6 +34,7 @@
 | `/v1/auth/token` | POST | Issue Sanctum token for landlord or tenant operators. | Guest | `AuthCredentialsPayload` | `AuthTokenResource` |
 | `/v1/tenants` | POST | Provision tenant with capability toggles and branding seed. | `tenants:create` | `TenantProvisionPayload` | `TenantResource` |
 | `/v1/tenants/{tenant_slug}` | GET | Retrieve tenant profile, capability toggles, and branding snapshot. | `tenants:read` | `n/a` | `TenantResource` |
+| `/v1/auth/register/password` | POST | Register a password-backed identity and merge nominated anonymous actors using optimistic locking. | Guest | `PasswordRegistrationPayload` | `PasswordRegistrationResource` |
 | `/v1/anonymous/identities` | POST | Issue scoped anonymous identity token bound to tenant policies. | Guest | `AnonymousIdentityRequest` | `AnonymousIdentityResource` |
 | `/v1/accounts` | POST | Create account within the current tenant and seed default abilities. | `accounts:create` | `AccountProvisionPayload` | `AccountResource` |
 | `/v1/accounts/{account_id}` | GET | Retrieve account metadata and capability toggles. | `accounts:read` | `n/a` | `AccountResource` |
@@ -88,7 +90,7 @@
 | `display_name` | String | Preferred display name. | No | |
 | `emails` | Array<String> | Contact email addresses. | No | Partial unique index per tenant. |
 | `phones` | Array<String> | Contact phone numbers. | No | Partial unique index per tenant. |
-| `identity_state` | String | Lifecycle state of the identity. | Yes | Enum: `anonymous`, `verified`. |
+| `identity_state` | String | Lifecycle state of the identity. | Yes | Enum: `anonymous`, `registered`, `validated`. |
 | `fingerprints` | Document | Device fingerprint metadata captured when issuing anonymous identity. | Yes | Stores `hash`, `first_seen_at`, `last_seen_at`, `user_agent`. |
 | `credentials` | Array<Document> | Linked credential providers. | Yes | Each entry stores provider metadata. |
 | `credentials.provider` | String | Credential provider ID (`password`, `google`, `apple`, etc.). | Yes | Multiple entries per provider allowed. |
@@ -98,6 +100,7 @@
 | `credentials.last_used_at` | Date | Timestamp of last successful authentication using this credential. | No | |
 | `consents` | Document | Consent artifacts keyed by policy id. | Yes | Contains `terms_version`, `marketing_opt_in`, `updated_at`. |
 | `promotion_audit` | Array<Document> | History of identity_state transitions. | Yes | Each entry stores `from_state`, `to_state`, `promoted_at`, `operator_id`. |
+| `version` | Integer | Monotonic revision applied to enforce optimistic locking. | Yes | Defaults to `1`; incremented within domain services. |
 | `remember_token` | String | Sanctum remember token. | No | |
 | `created_at` | Date | Creation timestamp. | Yes | |
 | `updated_at` | Date | Last update timestamp. | Yes | |
@@ -109,6 +112,7 @@
 * `credentials.provider`: Enumerated providers maintained in the capability catalogue (`password`, `google`, `apple`, `microsoft`, etc.). Multiple credentials from the same provider (e.g., several Gmail accounts) may link to one identity.
 * `credentials.subject`: Provider-specific identifier; uniqueness enforced per provider so a credential cannot link to multiple identities.
 * `credentials.secret_hash`: Optional hashed secret for password credentials; multiple password entries may reuse the same hash when the user elects a shared password across email aliases.
+* `version`: Positive integer guarded by the merge service; clients must present the last-read value to modify the document and expect HTTP 409 when the stored revision advances before persistence.
 
 ##### Collection: `landlord_users`
 
@@ -175,7 +179,7 @@
 #### 3.6 Observability & Instrumentation
 
 * **Logs:** JSON structured logs capturing `tenant_slug`, `account_id`, `request_id`, `identity_state`, `ability_scope`, `outcome`, `latency_ms`, `credential_provider`.
-* **Metrics:** Prometheus counters (`tenants_provisioned_total`, `anonymous_tokens_issued_total`, `credentials_linked_total`, `account_users_by_state_total`), histograms (`tenant_provision_latency_seconds`, `identity_promotion_latency_seconds`, `credential_link_latency_seconds`), gauges (`active_capabilities_total`).
+* **Metrics:** Prometheus counters (`tenants_provisioned_total`, `anonymous_tokens_issued_total`, `credentials_linked_total`, `account_users_by_state_total`, `identity_merge_conflicts_total`), histograms (`tenant_provision_latency_seconds`, `identity_promotion_latency_seconds`, `credential_link_latency_seconds`), gauges (`active_capabilities_total`).
 * **Tracing:** OpenTelemetry spans named `foundation.control_plane.*`; propagate `traceparent` headers and include `identity_state` baggage for promotion flows. Credential linking spans add `credential_provider` attribute.
 * **Alerts:** Pager alert when P99 provisioning latency > 2 s for five minutes; warning when identity promotion failure rate exceeds 5% per tenant over one hour; informational alert when anonymous token issuance or credential linking spikes 3× over baseline within 15 minutes.
 
@@ -190,7 +194,7 @@
 
 * **Shared Libraries:** Depends on shared DTOs from the capability catalogue (module identifiers, ability slugs, credential providers) and identity token payload structures consumed by downstream services.
 * **Data Ownership Boundaries:** `tenants`, `accounts`, `account_users`, and `interaction_records` are owned exclusively by this module. Anonymous identity tokens and credential links are issued and revoked only through the control plane.
-* **Failure & Degradation Modes:** On provisioning failure, rollback removes partially created tenants and emits `TenantProvisionFailed`. If anonymous identity issuance fails repeatedly, tenants enter restricted mode disallowing new anonymous interactions until remediation. If credential linking fails validation, the system raises alerts and locks further credential attachments for that identity until resolved.
+* **Failure & Degradation Modes:** On provisioning failure, rollback removes partially created tenants and emits `TenantProvisionFailed`. If anonymous identity issuance fails repeatedly, tenants enter restricted mode disallowing new anonymous interactions until remediation. If credential linking fails validation, the system raises alerts and locks further credential attachments for that identity until resolved. Repeated optimistic-lock collisions (`account_users.version` mismatches exceeding 5% of merge attempts over five minutes) trigger a warning event and surface in the operational dashboard so operators can intervene.
 
 ## 5. Implementation Notes
 
