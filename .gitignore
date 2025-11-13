@@ -11,4 +11,5 @@ application/*
 # AI Local helper
 AGENTS.md
 GEMINI.md
-delphi-ai/
+foundation_documentation
+delphi-ai
