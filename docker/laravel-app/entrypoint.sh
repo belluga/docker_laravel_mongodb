@@ -10,6 +10,19 @@ usermod -u $USER_ID -g $GROUP_ID www-data
 # THE FIX:
 # Explicitly set ownership on BOTH the code and the storage volume.
 chown -R www-data:www-data /var/www
+
+# Ensure bootstrap cache exists for artisan/package discovery.
+mkdir -p /var/www/bootstrap/cache
+chown -R www-data:www-data /var/www/bootstrap/cache
+
+# Make sure the storage volume exists before artisan tries to touch it.
+mkdir -p /var/www/storage/app/public \
+         /var/www/storage/framework/cache \
+         /var/www/storage/framework/sessions \
+         /var/www/storage/framework/testing \
+         /var/www/storage/framework/views \
+         /var/www/storage/logs
+touch /var/www/storage/logs/laravel.log
 chown -R www-data:www-data /var/www/storage
 
 # --- The rest of your setup logic ---

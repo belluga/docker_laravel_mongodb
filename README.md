@@ -32,7 +32,8 @@ Antes de começar, garanta que você tenha o seguinte software instalado:
 
 ## 🚀 Setup Inicial
 
-Siga estes passos cuidadosamente para configurar seu projeto pela primeira vez.
+Siga estes passos cuidadosamente para configurar seu projeto pela primeira vez.  
+> **Importante:** Antes do passo 1, siga as instruções publicadas no repositório `delphi-ai` (documentação de onboarding) para trazer o Delphi e criar os symlinks necessários (`AGENTS.md`, `foundation_documentation/`, etc.). Execute o script diretamente a partir de lá (`./delphi-ai/scripts/setup_delphi.sh`).
 
 ### Passo 1: Fork e Clone
 
@@ -168,3 +169,39 @@ Execute todos os comandos de desenvolvimento através do `docker compose exec`.
     ```bash
     docker compose logs -f <nome-do-servico>
     ```
+
+> ⚠️ **Permissões de arquivos (`.env`, etc.)**  
+> Sempre edite os arquivos do repositório (principalmente `.env` e submódulos) a partir do seu usuário host/WSL. Evite alterar esses arquivos dentro dos contêineres ou como `root`, porque isso muda a propriedade (UID 0/1000) e impede que o editor host salve atualizações.
+
+***
+
+## 📦 Publicando Releases do Flutter
+
+O Docker **não** executa o build do Flutter automaticamente. O NGINX serve apenas os arquivos estáticos colocados em `releases/flutter/current`. Isso garante que apenas bundles oficialmente publicados fiquem disponíveis.
+
+1. Gere o bundle localmente (ou em CI) com o script auxiliar:
+   ```bash
+   ./scripts/flutter/build_web.sh            # saída padrão: ./web-app
+   ```
+   (Dentro de `flutter-app/scripts` há um wrapper que aponta para o mesmo script, caso prefira executar a partir do submódulo.)
+2. O script grava os artefatos na pasta `web-app/`, já removendo `favicon.ico`, `manifest.json` e `icons/` (esses assets são servidos pelo backend). Revise o diff do submódulo:
+   ```bash
+   git status web-app
+   ```
+3. Quando estiver satisfeito, faça commit/push dentro do submódulo e depois atualize o repositório principal:
+   ```bash
+   cd web-app
+   git add .
+   git commit -m "release: <versao>"
+   git push origin main
+   cd ..
+   git add web-app
+   git commit -m "chore: atualiza submodulo web"
+   ```
+4. Reinicie o NGINX (ou execute a pipeline de deploy) para servir o novo bundle:
+   ```bash
+   docker compose restart nginx
+   ```
+
+> **Importante:** Como o bundle fica em um repositório dedicado, você pode manter branches/PRs específicos para revisão do conteúdo estático e promover apenas versões estáveis para `main`.
+> **Nota sobre Flutter/FVM:** O time utiliza [FVM](https://fvm.app/) para garantir consistência de versão. Sempre execute comandos locais via `fvm flutter ...` (ou configure o VS Code para apontar para o binário do FVM). Caso prefira o modo Docker, basta invocar o script com `docker run --rm -u "$(id -u)":"$(id -g)" -v "$PWD":/workspace -w /workspace ghcr.io/cirruslabs/flutter:3.35.7 ...` para preservar permissões.

@@ -9,25 +9,6 @@ services:
     networks:
       - app-network
 
-  flutter:
-    image: ghcr.io/cirruslabs/flutter:3.35.7
-    volumes:
-      - ./flutter-app:/app
-    working_dir: /app
-    user: "${HOST_UID:-0}:${HOST_GID:-0}"
-    mem_limit: 2g
-    command: >
-      bash -lc "
-        cd /app &&
-        flutter pub get &&
-        flutter build web &&
-        chown -R ${UID}:${GID} /app/build &&
-        chmod -R 755 /app/build &&
-        tail -f /dev/null
-      "
-    networks:
-      - app-network
-
   nginx:
     build: ./docker/nginx
     env_file: .env
@@ -36,13 +17,12 @@ services:
       - "${NGINX_HOST_PORT_443}:443"
     volumes:
       - ./laravel-app:/var/www
-      - ./flutter-app/build/web:/var/www/flutter
+      - ./web-app:/var/www/flutter:ro
       - app-storage:/var/www/storage
       - certbot-data:/etc/letsencrypt
       - certbot-challenge:/var/www/certbot
     depends_on:
       - app
-      - flutter
     networks:
       - app-network
 

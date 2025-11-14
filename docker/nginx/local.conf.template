@@ -20,6 +20,7 @@ server {
     # This is the primary catch-all location.
     location / {
         root /var/www/flutter;
+        index index.html;
         try_files $uri $uri/ /index.html;
         
         # Add headers for better caching on Flutter's static assets

@@ -22,7 +22,8 @@ WORKDIR /var/www
 
 COPY ./laravel-app /var/www
 
-RUN chown -R www-data:www-data /var/www/bootstrap/cache && \
+RUN mkdir -p /var/www/bootstrap/cache && \
+    chown -R www-data:www-data /var/www/bootstrap/cache && \
     chmod -R 775 /var/www/bootstrap/cache
 
 COPY docker/laravel-app/entrypoint.sh /usr/local/bin/entrypoint.sh
