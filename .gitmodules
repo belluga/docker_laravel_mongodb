@@ -1,12 +1,12 @@
 [submodule "flutter-app"]
 	path = flutter-app
-	url = https://github.com/belluga/flutter_laravel_backend_boilerplate
+	url = https://github.com/belluga/festou_app
 	ignore = all
 [submodule "laravel-app"]
 	path = laravel-app
-	url = https://github.com/belluga/laravel_mongodb_boilerplate
+	url = https://github.com/belluga/festou_api
 	ignore = all
 [submodule "web-app"]
 	path = web-app
-	url = https://github.com/belluga/boilerplate_web.git
+	url = https://github.com/belluga/festou_web.git
 	branch = main
