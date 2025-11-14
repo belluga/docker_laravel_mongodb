@@ -60,6 +60,15 @@ The Learning Engine must not have knowledge of other systems. It only emits sign
 * **Justification:** Learners may defer progression for extended periods due to life events. The system must freeze upcoming releases while allowing already-unlocked material to remain accessible and provide deterministic resumption rules aligned with the selected drip policy.
 * **Implementation:** When an enrollment transitions to an `access` status of `"frozen"` or `"suspended"`, the Learning Engine records a pause window inside the enrollment drip state and halts release evaluation. Upon resumption, the engine applies the policy's `pause_behavior`: shifting remaining releases forward by the accumulated pause duration, unlocking all pending items immediately, or leaving the original schedule intact. The recalculated schedule is persisted and audited so downstream surfaces (progress summaries, personalization, notifications) realign automatically.
 
+### 2.11. Notes Exploration Surface
+* **Principle:** Learners need a canonical “Notes” surface that aggregates every annotation across courses, supports progressive filtering, and replays the underlying video context at the captured timestamp.
+* **Justification:** Notes currently live inside individual course screens, forcing learners to remember which module/lesson owns a thought. The launch-ready experience must expose a tenant-wide navigation hub anchored in the Learning Engine’s hierarchy, so research flows (documents, financial reviews) stay consistent with the rest of the app.
+* **Implementation Blueprint:**
+  - **Progressive Filters:** The UI exposes cascading dropdowns sourced from the learner’s cohort snapshot. Selecting a course reveals its modules; selecting a module reveals lessons/activities, and so forth until the course’s depth is exhausted. Each level defaults to “All,” so partial selections still return every descendant node.
+  - **Sectioned Timeline:** Notes render in the same card style as the in-course notes tab but grouped by breadcrumb headers (e.g., `Curso • Módulo • Aula`). Sections follow the canonical node order streamed by the Learning Engine and sort their notes ascending by captured timestamp.
+  - **Video Recall:** Tapping a timestamp opens a modal bottom sheet that loads the associated course item, instantiates the lightweight video player, seeks to the note’s timestamp (minus a guard offset), and displays the note content for context. This relies on the Learning Engine content endpoint plus the Notes service for the annotation payload.
+  - **Data Contracts:** The Notes service must return annotations per `course_item_id` (as today) while the Learning Engine exposes child listings for each node so the client can build descendant scopes without additional API calls. Any backend change (e.g., attaching notes directly to modules) must update this section before client work resumes.
+
 ---
 
 ## 3. Detailed Collection Schemas

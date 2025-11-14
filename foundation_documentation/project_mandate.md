@@ -36,3 +36,10 @@ These principles anchor every architectural and operational decision within the 
 * Shared modules (identity, catalog, learning, checkout) exhibit contract stability across products, with versioned APIs and documentation maintained inside the boilerplate repository.
 * Observability dashboards, alerting policies, and compliance reports are provisioned automatically whenever a new tenant or capability module is activated.
 * Anonymous visitor journeys convert to authenticated identities at or above benchmark rates due to frictionless entry points and progressive enrichment pathways designed into the boilerplate.
+
+---
+
+## 5. Current Architecture Mode
+
+* **Mode:** Foundational
+* **Implications:** No production tenants. All work must express the ideal launch architecture without backward-compatibility constraints. When the first production tenant goes live, run the Architecture Mode Transition Method (`delphi-ai/methods/generic/architecture_mode_transition_method.md`) to enter Operational Mode and document migration policies.

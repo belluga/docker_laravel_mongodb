@@ -34,6 +34,7 @@
   * `presentation/` – Feature-specific screens split by landlord vs tenant contexts, plus common widgets.
 * **Modular App Composition:** `ModuleSettings` loads discrete modules (`InitializationModule`, `DashboardModule`, `LmsModule`, `ScheduleModule`, etc.). Each module registers dependencies via GetIt and defines its own routes.
 * **Routing Guards:** `TenantRouteGuard`, `AuthRouteGuard`, `IsInitializedGuard` coordinate navigation gating by checking repositories/controllers.
+* **Resolver Routes:** `ResolverRoute` (`lib/application/router/resolvers/resolver_route.dart`) wraps AutoRoute pages that require hydrated domain data. Feature modules register `RouteModelResolver<T>` implementations (e.g., `CourseItemRouteResolver` in `lib/application/router/resolvers/course_item_route_resolver.dart`) so resolver routes translate path params into domain models before screens/controllers build. This keeps presentation widgets route-agnostic and centralizes data-fetch concerns inside modules.
 * **State Management:** Repositories expose `StreamValue` observers. UI consumes them via `StreamValueBuilder`; theme updates flow from `ThemeRepository`.
 * **Platform Bootstrapping:** `Application` exports either web or mobile contract; mobile variant sets orientation, while web variant (in `application_web.dart`) extends behaviors for web plugins.
 
