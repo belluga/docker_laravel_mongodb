@@ -11,6 +11,7 @@ application/*
 # AI Local helper
 AGENTS.md
 GEMINI.md
-foundation_documentation
 delphi-ai
+foundation_documentation
 flutter-app-latest/
+gemini_memory.md
