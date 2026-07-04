@@ -1,20 +1,195 @@
 server {
     listen 80;
     listen [::]:80;
-    # Use a variável de ambiente para o domínio
-    server_name ${YOUR_DOMAIN};
+    server_name ${DOMAIN};
 
-    # ... o resto da sua configuração ...
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type "text/plain";
+        try_files $uri =404;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
 }
 
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name ${YOUR_DOMAIN};
+    server_name ${DOMAIN};
 
-    # Caminhos para os certificados SSL passados via .env
-    ssl_certificate ${SSL_CERTIFICATE_PATH};
-    ssl_certificate_key ${SSL_CERTIFICATE_KEY_PATH};
-    
-    # ... resto da configuração SSL e location blocks ...
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+
+    client_max_body_size 100M;
+
+    root /var/www/public;
+    index index.php index.html;
+    try_files $uri $uri/ /index.php?$query_string;
+
+    location = /.well-known/assetlinks.json {
+        default_type application/json;
+        try_files $uri /index.php?$query_string;
+    }
+
+    location = /.well-known/apple-app-site-association {
+        default_type application/json;
+        try_files $uri /index.php?$query_string;
+    }
+
+    location @laravel {
+        rewrite ^ /index.php$is_args$args last;
+    }
+
+    location @tenant_public_shell {
+        rewrite ^ /index.php$is_args$args last;
+    }
+
+    # Tenant-aware branding assets are backend-owned even though they look file-like.
+    location = /manifest.json {
+        try_files /__backend_owned_branding__ /index.php?$query_string;
+    }
+
+    location = /favicon.ico {
+        try_files /__backend_owned_branding__ /index.php?$query_string;
+    }
+
+    location ^~ /icon/ {
+        try_files /__backend_owned_branding__ /index.php?$query_string;
+    }
+
+    location = /logo-dark.png {
+        try_files /__backend_owned_branding__ /index.php?$query_string;
+    }
+
+    location = /logo-light.png {
+        try_files /__backend_owned_branding__ /index.php?$query_string;
+    }
+
+    location = /icon-dark.png {
+        try_files /__backend_owned_branding__ /index.php?$query_string;
+    }
+
+    location = /icon-light.png {
+        try_files /__backend_owned_branding__ /index.php?$query_string;
+    }
+
+    location = /index.html {
+        root /opt/web-shell;
+        try_files $uri =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location = /main.dart.js {
+        root /opt/web-shell;
+        try_files $uri =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location = /flutter_bootstrap.js {
+        root /opt/web-shell;
+        try_files $uri =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location = /flutter_service_worker.js {
+        root /opt/web-shell;
+        try_files $uri =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location = /version.json {
+        root /opt/web-shell;
+        try_files $uri =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location ^~ /assets/ {
+        root /opt/web-shell;
+        try_files $uri =404;
+        expires 1y;
+        add_header Cache-Control "public, immutable" always;
+    }
+
+    location ~* \.(?:js|css|png|jpg|jpeg|gif|svg|webp|json|map|wasm|txt)$ {
+        root /opt/web-shell;
+        try_files $uri =404;
+        expires 1y;
+        add_header Cache-Control "public, immutable" always;
+    }
+
+    location ^~ /storage/ {
+        alias /var/www/storage/app/public/;
+        expires 1y;
+        add_header Cache-Control "public";
+        add_header X-Content-Type-Options nosniff;
+        add_header X-Frame-Options DENY;
+    }
+
+    location = / {
+        try_files /__tenant_public_shell__ /index.php?$query_string;
+    }
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type "text/plain";
+        try_files $uri =404;
+    }
+
+    include /etc/nginx/project/*.conf;
+
+    location ^~ /api/ {
+        try_files $uri /index.php?$query_string;
+    }
+
+    location = /admin/api {
+        try_files $uri /index.php?$query_string;
+    }
+
+    location ^~ /admin/api/ {
+        try_files $uri /index.php?$query_string;
+    }
+
+    location = /admin {
+        root /opt/web-shell;
+        try_files /index.html =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location ^~ /admin/ {
+        root /opt/web-shell;
+        try_files /index.html =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location / {
+        root /opt/web-shell;
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        include fastcgi_params;
+        fastcgi_pass app:9000;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+
+        fastcgi_read_timeout 300;
+        fastcgi_send_timeout 300;
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+
+    location ~ /(vendor|storage|bootstrap|config|database|resources|routes|tests)/ {
+        deny all;
+    }
+
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
 }

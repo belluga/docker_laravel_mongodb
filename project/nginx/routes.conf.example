@@ -1,0 +1,14 @@
+# Copy this file to a new *.conf overlay when your downstream project needs
+# route families handled before the generic SPA fallback.
+
+location ^~ /resource-prefix/ {
+    try_files $uri /index.php?$query_string;
+}
+
+location = /public-entry {
+    try_files /__tenant_public_shell__ /index.php?$query_string;
+}
+
+location = /manifest.json {
+    try_files /__backend_owned_branding__ /index.php?$query_string;
+}

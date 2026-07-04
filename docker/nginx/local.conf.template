@@ -1,119 +1,199 @@
 server {
     listen 80;
-    server_name localhost;
-    
-    # Increase client max body size for file uploads
+    listen [::]:80;
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name _;
+
+    ssl_certificate /etc/nginx/certs/local/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/local/privkey.pem;
+
     client_max_body_size 100M;
 
-    # Set the default root for the Laravel application
     root /var/www/public;
     index index.php index.html;
     try_files $uri $uri/ /index.php?$query_string;
 
-    # --- Named location for Laravel fallback ---
-    # This centralizes the logic for passing requests to Laravel's front controller.
+    location = /.well-known/assetlinks.json {
+        default_type application/json;
+        try_files $uri /index.php?$query_string;
+    }
+
+    location = /.well-known/apple-app-site-association {
+        default_type application/json;
+        try_files $uri /index.php?$query_string;
+    }
+
     location @laravel {
         rewrite ^ /index.php$is_args$args last;
     }
 
-    # --- Flutter Web (Frontend) ---
-    # This is the primary catch-all location.
-    location / {
-        root /var/www/flutter;
-        try_files $uri $uri/ /index.html;
-        
-        # Add headers for better caching on Flutter's static assets
-        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
-            expires 1y;
-            add_header Cache-Control "public, immutable";
-        }
+    location @tenant_public_shell {
+        rewrite ^ /index.php$is_args$args last;
+    }
+
+    location = /index.html {
+        root /opt/web-shell;
+        try_files $uri =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location = /main.dart.js {
+        root /opt/web-shell;
+        try_files $uri =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location = /flutter_bootstrap.js {
+        root /opt/web-shell;
+        try_files $uri =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location = /flutter_service_worker.js {
+        root /opt/web-shell;
+        try_files $uri =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location = /version.json {
+        root /opt/web-shell;
+        try_files $uri =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    # Tenant-aware branding assets are backend-owned even though they look file-like.
+    location = /manifest.json {
+        try_files /__backend_owned_branding__ /index.php?$query_string;
+    }
+
+    location = /favicon.ico {
+        try_files /__backend_owned_branding__ /index.php?$query_string;
+    }
+
+    location ^~ /icon/ {
+        try_files /__backend_owned_branding__ /index.php?$query_string;
+    }
+
+    location = /logo-dark.png {
+        try_files /__backend_owned_branding__ /index.php?$query_string;
+    }
+
+    location = /logo-light.png {
+        try_files /__backend_owned_branding__ /index.php?$query_string;
+    }
+
+    location = /icon-dark.png {
+        try_files /__backend_owned_branding__ /index.php?$query_string;
+    }
+
+    location = /icon-light.png {
+        try_files /__backend_owned_branding__ /index.php?$query_string;
+    }
+
+    location ^~ /assets/ {
+        root /opt/web-shell;
+        try_files $uri =404;
+        expires 1y;
+        add_header Cache-Control "public, immutable" always;
+    }
+
+    location ~* \.(?:js|css|png|jpg|jpeg|gif|svg|webp|json|map|wasm|txt)$ {
+        root /opt/web-shell;
+        try_files $uri =404;
+        expires 1y;
+        add_header Cache-Control "public, immutable" always;
     }
 
     location ^~ /storage/ {
-        # 'alias' maps the URL directly to the physical storage path from the volume.
         alias /var/www/storage/app/public/;
-
         expires 1y;
         add_header Cache-Control "public";
         add_header X-Content-Type-Options nosniff;
         add_header X-Frame-Options DENY;
-
-        # If the file doesn't exist, return a 404.
-        try_files $uri $uri/ =404;
     }
 
-    # --- Laravel API and other backend routes ---
-    # These also have high priority. If the file doesn't exist, they fall back to Laravel.
+    location = / {
+        try_files /__tenant_public_shell__ /index.php?$query_string;
+    }
+
+    include /etc/nginx/project/*.conf;
+
     location ^~ /api/ {
-        try_files $uri @laravel;
-    }
-    location ^~ /admin/ {
-        try_files $uri @laravel;
-    }
-    location = /manifest.json {
         try_files $uri /index.php?$query_string;
     }
+
+    location = /admin/api {
+        try_files $uri /index.php?$query_string;
+    }
+
+    location ^~ /admin/api/ {
+        try_files $uri /index.php?$query_string;
+    }
+
     location = /environment {
-            try_files $uri /index.php?$query_string;
-        }
-    location ^~ /icon/ {
-        try_files $uri /index.php?$query_string;
-    }
-    location ^~ /logo-dark.png {
-        try_files $uri /index.php?$query_string;
-    }
-    location ^~ /logo-light.png {
-        try_files $uri /index.php?$query_string;
-    }
-    location ^~ /icon-dark.png {
-        try_files $uri /index.php?$query_string;
-    }
-    location ^~ /icon-light.png {
-        try_files $uri /index.php?$query_string;
+        return 404;
     }
 
-    # --- PHP-FPM Handler ---
-    # This is now a single, top-level block that handles all .php requests.
+    location = /admin {
+        root /opt/web-shell;
+        try_files /index.html =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location ^~ /admin/ {
+        root /opt/web-shell;
+        try_files /index.html =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location / {
+        root /opt/web-shell;
+        try_files $uri $uri/ /index.html;
+    }
+
     location ~ \.php$ {
-
-        # --- CORS Handling START ---
-        # Handle CORS preflight requests
-        if ($request_method = 'OPTIONS') {
-            add_header 'Access-Control-Allow-Origin' "$http_origin" always;
-            add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
-            add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization' always;
-            add_header 'Access-Control-Allow-Credentials' 'true' always;
-            add_header 'Access-Control-Max-Age' 1728000;
-            add_header 'Content-Length' 0;
-            return 204;
-        }
-
-        # Add CORS headers to actual requests
-        add_header 'Access-Control-Allow-Origin' "$http_origin" always;
-        add_header 'Access-Control-Allow-Credentials' 'true' always;
-        # --- CORS Handling END ---
-
         try_files $uri =404;
         include fastcgi_params;
         fastcgi_pass app:9000;
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         fastcgi_param PATH_INFO $fastcgi_path_info;
-        
-        # Timeouts for long-running requests
+
+        set $forwarded_proto $http_x_forwarded_proto;
+        if ($forwarded_proto = '') {
+            set $forwarded_proto $scheme;
+        }
+        if ($http_cf_visitor ~* "\"scheme\":\"https\"") {
+            set $forwarded_proto https;
+        }
+        if ($http_cf_visitor ~* "\"scheme\":\"http\"") {
+            set $forwarded_proto http;
+        }
+        fastcgi_param HTTP_X_FORWARDED_PROTO $forwarded_proto;
+
+        set $fastcgi_https '';
+        set $fastcgi_server_port $server_port;
+        if ($forwarded_proto = 'https') {
+            set $fastcgi_https 'on';
+            set $fastcgi_server_port 443;
+        }
+        fastcgi_param HTTPS $fastcgi_https;
+        fastcgi_param REQUEST_SCHEME $forwarded_proto;
+        fastcgi_param SERVER_PORT $fastcgi_server_port;
+
         fastcgi_read_timeout 300;
         fastcgi_send_timeout 300;
     }
 
-    # --- Security Rules ---
     location ~ /\. {
         deny all;
     }
+
     location ~ /(vendor|storage|bootstrap|config|database|resources|routes|tests)/ {
         deny all;
     }
 
-    # --- Gzip Compression ---
     gzip on;
     gzip_vary on;
     gzip_min_length 1024;

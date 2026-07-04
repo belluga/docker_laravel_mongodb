@@ -1,0 +1,45 @@
+# Validation-only override.
+# Do not promote or publish a lane that still depends on this file.
+#
+# Frozen Belluga validation inputs for this extraction pass:
+# - belluga_now_docker root: 1273902de61b158f98c221772e7d41424ce8beb9
+# - belluga_now_backend:    dc1c908ee4c5a895a9545ffb1190200df419ebea
+# - belluga_now_web:        5ec8a82286e968de27bbfcf48a594387ceb83385
+#
+# Default validation root checkout:
+#   ../belluga_now_docker
+# Override with BELLUGA_VALIDATION_ROOT when the exact frozen checkout is
+# materialized somewhere else for a deterministic validation rerun.
+
+services:
+  app:
+    volumes:
+      - ${BELLUGA_VALIDATION_ROOT:-../belluga_now_docker}/laravel-app:/var/www
+      - ${BELLUGA_VALIDATION_ROOT:-../belluga_now_docker}/web-app:/opt/web-shell:ro
+      - ./project:/opt/project:ro
+      - app-storage:/var/www/storage
+    environment:
+      FLUTTER_WEB_SHELL_PATH: /opt/web-shell/index.html
+      LARAVEL_REQUIRED_RUNTIME_CLASSES_FILE: /opt/project/belluga-validation/laravel/required_runtime_classes.txt
+
+  worker:
+    volumes:
+      - ${BELLUGA_VALIDATION_ROOT:-../belluga_now_docker}/laravel-app:/var/www
+      - ./project:/opt/project:ro
+      - app-storage:/var/www/storage
+    command: ["sh", "-lc", "sh /var/www/scripts/run_queue_worker.sh"]
+
+  scheduler:
+    volumes:
+      - ${BELLUGA_VALIDATION_ROOT:-../belluga_now_docker}/laravel-app:/var/www
+      - ./project:/opt/project:ro
+      - app-storage:/var/www/storage
+
+  nginx:
+    volumes:
+      - ${BELLUGA_VALIDATION_ROOT:-../belluga_now_docker}/laravel-app:/var/www
+      - ${BELLUGA_VALIDATION_ROOT:-../belluga_now_docker}/web-app:/opt/web-shell:ro
+      - ./project/belluga-validation/nginx:/etc/nginx/project:ro
+      - app-storage:/var/www/storage
+      - certbot-data:/etc/letsencrypt
+      - certbot-challenge:/var/www/certbot

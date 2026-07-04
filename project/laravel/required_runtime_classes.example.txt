@@ -1,0 +1,6 @@
+# One fully-qualified class name per line.
+# Blank lines and comments are ignored.
+#
+# Example:
+# App\Providers\AppServiceProvider
+# App\Contracts\CriticalRuntimeContract

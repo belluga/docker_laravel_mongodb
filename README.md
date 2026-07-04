@@ -1,170 +1,159 @@
-#  Boilerplate Flutter & Laravel com Docker
+# Boilerplate Flutter & Laravel com Docker
 
-![Laravel](https://img.shields.io/badge/Laravel-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)
-![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![Nginx](https://img.shields.io/badge/NGINX-009639?style=for-the-badge&logo=nginx&logoColor=white)
+Este repositório agora usa a topologia root/docker vNext extraída do Belluga
+Now, mas sem manter identidade Belluga hardcoded na base genérica.
 
-Um ambiente de desenvolvimento, staging e produção completo para aplicações com **Laravel** no backend e **Flutter** no frontend. O projeto é totalmente containerizado com **Docker** e utiliza **NGINX** como reverse proxy.
+## O que a base espera
 
-## ✨ Features
+- `laravel-app/`: código do backend Laravel.
+- `web-app/`: shell web estático já publicado para servir via NGINX.
+- `project/`: overlays downstream-owned (`nginx/`, `laravel/`, `well-known/`).
 
-* **Ambiente Unificado**: Backend e frontend gerenciados em um único projeto com Git Submodules.
-* **Containerizado**: Esqueça a necessidade de instalar PHP, Composer ou Flutter SDK na sua máquina. O Docker cuida de tudo.
-* **Perfis de Ambiente**: Alterne facilmente entre `staging` e `production` usando Perfis do Docker Compose.
-    * **Staging**: Exponha seu ambiente local na internet com um único comando usando o Cloudflare Tunnel.
-    * **Production**: Geração e renovação automática de certificados SSL/TLS com Certbot (Let's Encrypt).
-* **Consistência de Código**: O arquivo `.gitattributes` garante que as terminações de linha sejam consistentes em qualquer sistema operacional, evitando erros no Docker.
+O container root não compila mais o frontend dentro do `docker compose`. A base
+assume que o projeto downstream já entrega o shell web em `web-app/`.
 
-***
+## Topologia
 
-## ⚙️ Pré-requisitos
+- `app`, `worker` e `scheduler` compartilham o mesmo runtime Laravel.
+- `nginx` serve o backend PHP e o shell web estático.
+- `mongo` + `mongo-init` são opcionais via profile `local-db`.
+- `cloudflared` é opcional via profile `local-tunnel`.
+- `certbot` continua restrito ao profile `production`.
 
-Antes de começar, garanta que você tenha o seguinte software instalado:
+## Setup rápido
 
-* [Git](https://git-scm.com/)
-* [Docker](https://www.docker.com/products/docker-desktop/)
-* [Docker Compose](https://docs.docker.com/compose/install/)
+1. Copie o ambiente base:
 
-> ⚠️ Você **não precisa** ter PHP, Composer ou o SDK do Flutter instalados em sua máquina local.
+```bash
+cp .env.example .env
+```
 
-***
+2. Ajuste pelo menos `PROJECT_NAME`, `PROJECT_PREFIX`, `DOMAIN` e `CERTBOT_EMAIL`.
 
-## 🚀 Setup Inicial
+3. Garanta que o downstream já forneça `laravel-app/` e `web-app/`.
 
-Siga estes passos cuidadosamente para configurar seu projeto pela primeira vez.
+Na lane atual deste repositório, a validação Belluga ainda pode fornecer esses
+inputs por `docker-compose.validation-belluga.yml` + `BELLUGA_VALIDATION_ROOT`.
+Fora desse override temporário, a base continua exigindo um `web-app/`
+materializado localmente.
 
-### Passo 1: Fork e Clone
+4. Se precisar de túnel local, crie o arquivo local de segredo:
 
-1.  **Fork** este repositório para a sua conta do GitHub.
-2.  **Clone o seu fork** para a sua máquina local. Use o comando `--recursive` para clonar também os submódulos (`laravel-app` e `flutter-app`).
+```bash
+cp .env.local.tunnel.example .env.local.tunnel
+```
 
-    ```bash
-    git clone --recursive <URL_DO_SEU_FORK>
-    cd <nome-do-repositorio>
-    ```
+`CLOUDFLARE_TUNNEL_TOKEN` fica apenas em `.env.local.tunnel`, não em `.env.example`.
 
-### Passo 2: Crie Seus Novos Repositórios
+## Execução local
 
-Os submódulos neste boilerplate ainda apontam para os repositórios originais. Você precisa criar **dois novos repositórios vazios** na sua conta do GitHub:
+Com Mongo local:
 
-* Um para o seu backend **Laravel**.
-* Um para o seu frontend **Flutter**.
+```bash
+APP_ENV=local COMPOSE_PROFILES=local-db docker compose up -d --build
+```
 
-### Passo 3: Atualize os Submódulos
+Sem Mongo local:
 
-Agora, aponte os submódulos para os seus novos repositórios.
+```bash
+APP_ENV=local COMPOSE_PROFILES= docker compose up -d --build
+```
 
-1.  **Atualize a URL do backend Laravel:**
-    ```bash
-    # Substitua pela URL do seu novo repositório backend.
-    git submodule set-url -- laravel-app <URL_DO_SEU_NOVO_REPO_LARAVEL>
-    ```
+Com túnel local:
 
-2.  **Atualize a URL do frontend Flutter:**
-    ```bash
-    # Substitua pela URL do seu novo repositório frontend.
-    git submodule set-url -- flutter-app <URL_DO_SEU_NOVO_REPO_FLUTTER>
-    ```
+```bash
+APP_ENV=local COMPOSE_PROFILES=local-db,local-tunnel \
+docker compose --env-file .env --env-file .env.local.tunnel up -d --build
+```
 
-3.  **Sincronize as alterações:**
-    ```bash
-    git submodule sync --recursive
-    git submodule update --init --recursive
-    ```
+Comandos úteis:
 
-### Passo 4: Configure o Arquivo de Ambiente
+```bash
+docker compose ps
+docker compose logs -f --tail=200
+docker compose exec app php artisan <comando>
+docker compose exec app composer install
+```
 
-1.  Copie o arquivo de exemplo `.env.example` para um novo arquivo chamado `.env`.
-    ```bash
-    cp .env.example .env
-    ```
-2.  **Edite o arquivo `.env`** com as configurações básicas do projeto, como `PROJECT_NAME`. As variáveis específicas de cada ambiente serão preenchidas a seguir.
+## Contratos de CI locais
 
-### Passo 5: Configure o Túnel para Staging (Opcional)
+O runner root de contratos fica em:
 
-Para usar o perfil de `staging` e expor seu ambiente local na internet, você precisa de um **Cloudflare Tunnel**.
+```bash
+bash tools/ci/run_contract.sh --list --profile stage-full
+```
 
-1.  Siga o **tutorial oficial do Cloudflare** para criar seu túnel:
-    * **[Guia de Início Rápido do Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/)**
+Superfícies atuais:
 
-2.  Após seguir o tutorial, você terá um **token do túnel** e um **domínio público** (ex: `meu-app.meudominio.com`).
+- `stage-full`: broadest local CI Equivalent at the current root/docker boundary; ele agrega invariantes root-owned, preflight de imagens runtime e o overlay explícito de validação Belluga project-owned, sem alegar paridade de successor fronts web/flutter/browser.
+- `stage-full` falha fechado se os inputs Laravel/web shell da validation-owner lane não estiverem materializados antes do `compose config`.
+- `main-proof`: separate production-lane semantic guard; ele permanece fail-closed enquanto `docker-compose.validation-belluga.yml` continuar sendo a surface dona da validação local, então não é prova promotable hoje.
 
-3.  Abra seu arquivo `.env` e atualize as seguintes variáveis:
-    * `CLOUDFLARE_TUNNEL_TOKEN`: Cole o token do seu túnel aqui.
-    * `DOMAIN`: Insira o domínio público que você configurou para o túnel.
+Execução:
 
-### Passo 6: Envie o Código Inicial
+```bash
+bash tools/ci/run_contract.sh --profile stage-full
+bash tools/ci/run_contract.sh --profile main-proof
+```
 
-Finalmente, envie as alterações de configuração e o código inicial para seus novos repositórios.
+## Produção
 
-1.  **Commit das alterações no repositório principal:**
-    ```bash
-    git add .
-    git commit -m "chore: aponta submódulos e configura o projeto"
-    git push
-    ```
+```bash
+APP_ENV=production COMPOSE_PROFILES=production docker compose up -d --build
+```
 
-2.  **Envie o código para os repositórios dos submódulos:**
-    ```bash
-    # Envia o backend
-    cd laravel-app && git push -u origin --all && cd ..
+`DOMAIN` e `CERTBOT_EMAIL` devem apontar para o domínio real de produção.
 
-    # Envia o frontend
-    cd flutter-app && git push -u origin --all && cd ..
-    ```
+## Overlays downstream-owned
 
-***
+Use `project/` para manter identidade específica fora da base compartilhada:
 
-## 🐳 Executando com Docker
+- `project/nginx/routes.conf.example`: famílias extras de rota antes do fallback SPA.
+- `project/laravel/required_runtime_classes.example.txt`: classes críticas para a
+  verificação de autoload no entrypoint.
+- `project/well-known/*.example.json`: exemplos de payload para App Links /
+  Universal Links.
 
-O ambiente é controlado pela variável `COMPOSE_PROFILES` no seu arquivo `.env`.
+Se `project/nginx/` estiver vazio, o `include /etc/nginx/project/*.conf` é no-op.
 
-### Ambiente de Staging (Padrão)
+## Validação Belluga
 
-Ideal para desenvolvimento e para compartilhar seu progresso. Utiliza o Cloudflare Tunnel para criar um túnel seguro para seu ambiente local.
+`docker-compose.validation-belluga.yml` existe apenas para validar esta extração
+contra inputs Belluga fixados por SHA. Ele não é promotable canon.
 
-1.  No arquivo `.env`, garanta que `COMPOSE_PROFILES=staging`.
-2.  Confirme que as variáveis `CLOUDFLARE_TUNNEL_TOKEN` e `DOMAIN` foram preenchidas conforme o **Passo 5**.
-3.  Suba os contêineres:
-    ```bash
-    docker compose up -d --build
-    ```
+O proof autoritativo de `stage-full` agora exige que `BELLUGA_VALIDATION_ROOT`
+aponte para um checkout Git Belluga congelado exatamente nos SHAs declarados em
+`docker-compose.validation-belluga.yml`. O exemplo recomendado desta missão é
+`../belluga_now_docker-freeze`; use o sibling default `../belluga_now_docker`
+só se ele também estiver limpo e exatamente no ref congelado
+`origin/main@1273902de61b158f98c221772e7d41424ce8beb9`.
 
-### Ambiente de Produção
+Esse checkout precisa ser verificável por `git`, estar limpo, e manter os
+inputs filhos `laravel-app/` e `web-app/` materializados exatamente nos SHAs
+congelados do overlay.
 
-Para implantar em um servidor com um domínio real.
+Uso:
 
-1.  No arquivo `.env`, defina `COMPOSE_PROFILES=production`.
-2.  Preencha as variáveis `DOMAIN` e `CERTBOT_EMAIL` com os dados do seu domínio de produção.
-3.  Aponte o DNS do seu domínio para o IP do servidor.
-4.  Suba os contêineres:
-    ```bash
-    docker compose up -d --build
-    ```
+```bash
+BELLUGA_VALIDATION_ROOT=../belluga_now_docker-freeze \
+APP_ENV=local COMPOSE_PROFILES=local-db \
+docker compose -f docker-compose.yml -f docker-compose.validation-belluga.yml up -d --build
+```
 
-***
+Com checkout Belluga materializado em outro caminho:
 
-## 🛠️ Comandos Úteis de Desenvolvimento
+```bash
+BELLUGA_VALIDATION_ROOT=/caminho/para/belluga_now_docker-freeze \
+APP_ENV=local COMPOSE_PROFILES=local-db \
+docker compose -f docker-compose.yml -f docker-compose.validation-belluga.yml up -d --build
+```
 
-Execute todos os comandos de desenvolvimento através do `docker compose exec`.
+Com túnel:
 
-* **Executar comandos Artisan (Laravel):**
-    ```bash
-    docker compose exec app php artisan <seu-comando>
-    ```
+```bash
+APP_ENV=local COMPOSE_PROFILES=local-db,local-tunnel \
+docker compose --env-file .env --env-file .env.local.tunnel \
+  -f docker-compose.yml -f docker-compose.validation-belluga.yml up -d --build
+```
 
-* **Executar o Composer:**
-    ```bash
-    docker compose exec app composer install
-    ```
-
-* **Acessar o shell de um contêiner:**
-    ```bash
-    docker compose exec app sh
-    ```
-
-* **Verificar logs em tempo real:**
-    ```bash
-    docker compose logs -f <nome-do-servico>
-    ```
+Enquanto esse override existir, a lane continua local-validation-only.

@@ -1,0 +1,30 @@
+{
+  "schema_version": "ci-contract-v1",
+  "contract_id": "project-belluga-stage-full",
+  "description": "Project-owned Belluga validation overlay checks composed into the root stage-full CI Equivalent contract.",
+  "entries": [
+    {
+      "id": "validation-owner-inputs",
+      "repo": "project-overlay",
+      "kind": "project-owned-validation-surface",
+      "cwd": "../../..",
+      "command": [
+        "bash",
+        ".github/scripts/check_validation_owner_inputs.sh"
+      ],
+      "description": "Fail closed unless the validation-owner Laravel and web shell inputs are materialized."
+    },
+    {
+      "id": "belluga-validation-compose-render",
+      "repo": "project-overlay",
+      "kind": "project-owned-validation-surface",
+      "cwd": "../../..",
+      "command": [
+        "bash",
+        "-lc",
+        "APP_ENV=local COMPOSE_PROFILES=local-db DOMAIN=localhost CERTBOT_EMAIL=local@example.com MONGO_HOST_PORT=27018 docker compose -f docker-compose.yml -f docker-compose.validation-belluga.yml config >/tmp/project-belluga-validation.compose.yml"
+      ],
+      "description": "Render the generic base together with the explicit Belluga validation-owner overlay after the validation inputs are confirmed."
+    }
+  ]
+}

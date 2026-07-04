@@ -1,4 +1,8 @@
 .env
+.env.testing
+.env.local.tunnel
+.env.local.navigation
+tools/flutter/.navigation_harness_policy_probe_*.sh
 # exclude everything
 application/*
 .idea/*
@@ -8,8 +12,24 @@ application/*
 
 /.vscode/settings.json
 
-# AI Local helper
+# AI Agents
 AGENTS.md
-GEMINI.md
 delphi-ai
+skills
+GEMINI.md
 gemini_memory.md
+.agent
+.agents
+.codex/
+foundation_documentation/
+foundation_documentation
+
+# CLINE
+CLINE.md
+.cline
+.clinerules
+
+# CLAUDE
+CLAUDE.md
+.claude
+.claude/

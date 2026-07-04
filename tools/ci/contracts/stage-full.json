@@ -1,0 +1,20 @@
+{
+  "schema_version": "ci-contract-v1",
+  "contract_id": "stage-full",
+  "description": "Broadest local CI Equivalent contract for the current root/docker boundary: root-owned invariants, runtime preflight builds, and the explicit project-owned Belluga validation overlay. Successor-front web/flutter/browser parity remains deferred.",
+  "imports": [
+    {
+      "repo": "root",
+      "path": "root-invariants.json"
+    },
+    {
+      "repo": "root",
+      "path": "promotion-runtime-builds.json"
+    },
+    {
+      "repo": "project-overlay",
+      "path": "../../../project/belluga-validation/ci/stage-full.json"
+    }
+  ],
+  "entries": []
+}

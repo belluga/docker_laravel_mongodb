@@ -1,12 +1,18 @@
-### All Application files
-# application/*
+### Local/runtime artifacts must never enter promoted Docker images.
+**/.env
+**/.env.*
+!**/.env.example
 
-# Ignore Laravel's public storage symlink
-laravel-app/public/storage
-
-# Ignore vendor directories
+laravel-app/.composer
 laravel-app/vendor
-vendor
+laravel-app/storage/logs
+laravel-app/storage/framework/cache
+laravel-app/storage/framework/sessions
+laravel-app/storage/framework/views
+laravel-app/storage/framework/testing
 
-# Ignore Node.js dependencies
-node_modules
+flutter-app
+web-app
+foundation_documentation
+.git
+.github

@@ -1,66 +1,158 @@
 services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "${MONGO_HOST_PORT:-27017}:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok' | grep 1 > /dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    profiles:
+      - local-db
+
+  mongo-init:
+    image: mongo:7
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - app-network
+    entrypoint: >
+      bash -lc "mongosh --host mongo:27017 --quiet --eval '
+      try { rs.status().ok } catch (e) { rs.initiate({_id:\"rs0\", members:[{_id:0, host:\"mongo:27017\"}]}) }
+      '"
+    restart: "no"
+    profiles:
+      - local-db
+
   app:
+    image: ${APP_IMAGE:-project-app:local}
     build:
       context: .
       dockerfile: ./docker/laravel-app/Dockerfile
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+        required: false
     volumes:
       - ./laravel-app:/var/www
+      - ./web-app:/opt/web-shell:ro
+      - ./project:/opt/project:ro
       - app-storage:/var/www/storage
+    environment:
+      LOCAL_UID: ${UID:-1000}
+      LOCAL_GID: ${GID:-1000}
+      LOG_CHANNEL: ${LOG_CHANNEL:-stack}
+      LOG_STACK: ${LOG_STACK:-mongodb,stderr}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_MONGODB_URI: ${LOG_MONGODB_URI:-mongodb://mongo:27017/project_logs}
+      LOG_MONGODB_DATABASE: ${LOG_MONGODB_DATABASE:-project_logs}
+      LOG_MONGODB_COLLECTION: ${LOG_MONGODB_COLLECTION:-application_logs}
+      LOG_MONGODB_RETENTION_DAYS: ${LOG_MONGODB_RETENTION_DAYS:-14}
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "php -r \"exit(@fsockopen('127.0.0.1', 9000) ? 0 : 1);\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
 
-  flutter:
-    image: ghcr.io/cirruslabs/flutter:stable
+  worker:
+    image: ${WORKER_IMAGE:-project-worker:local}
+    build:
+      context: .
+      dockerfile: ./docker/laravel-app/Dockerfile
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+        required: false
+      app:
+        condition: service_healthy
     volumes:
-      - ./flutter-app:/app
-    working_dir: /app
-    mem_limit: 2g
-    command: >
-      sh -c "
-        flutter pub get &&
-        flutter build web &&
-        chown -R ${UID}:${GID} /app/build &&
-        chmod -R 755 /app/build &&
-        tail -f /dev/null
-      "
+      - ./laravel-app:/var/www
+      - ./project:/opt/project:ro
+      - app-storage:/var/www/storage
+    environment:
+      LOCAL_UID: ${UID:-1000}
+      LOCAL_GID: ${GID:-1000}
+      LOG_CHANNEL: ${LOG_CHANNEL:-stack}
+      LOG_STACK: ${LOG_STACK:-mongodb,stderr}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_MONGODB_URI: ${LOG_MONGODB_URI:-mongodb://mongo:27017/project_logs}
+      LOG_MONGODB_DATABASE: ${LOG_MONGODB_DATABASE:-project_logs}
+      LOG_MONGODB_COLLECTION: ${LOG_MONGODB_COLLECTION:-application_logs}
+      LOG_MONGODB_RETENTION_DAYS: ${LOG_MONGODB_RETENTION_DAYS:-14}
     networks:
       - app-network
+    command: ["sh", "-lc", "${WORKER_COMMAND:-php artisan queue:work --verbose --tries=3 --timeout=90}"]
+    restart: unless-stopped
+
+  scheduler:
+    image: ${SCHEDULER_IMAGE:-project-scheduler:local}
+    build:
+      context: .
+      dockerfile: ./docker/laravel-app/Dockerfile
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+        required: false
+      app:
+        condition: service_healthy
+    volumes:
+      - ./laravel-app:/var/www
+      - ./project:/opt/project:ro
+      - app-storage:/var/www/storage
+    environment:
+      LOCAL_UID: ${UID:-1000}
+      LOCAL_GID: ${GID:-1000}
+      LOG_CHANNEL: ${LOG_CHANNEL:-stack}
+      LOG_STACK: ${LOG_STACK:-mongodb,stderr}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_MONGODB_URI: ${LOG_MONGODB_URI:-mongodb://mongo:27017/project_logs}
+      LOG_MONGODB_DATABASE: ${LOG_MONGODB_DATABASE:-project_logs}
+      LOG_MONGODB_COLLECTION: ${LOG_MONGODB_COLLECTION:-application_logs}
+      LOG_MONGODB_RETENTION_DAYS: ${LOG_MONGODB_RETENTION_DAYS:-14}
+    networks:
+      - app-network
+    command: ["sh", "-lc", "${SCHEDULER_COMMAND:-while true; do php artisan schedule:run; sleep 60; done}"]
+    restart: unless-stopped
 
   nginx:
+    image: ${NGINX_IMAGE:-project-nginx:local}
     build: ./docker/nginx
-    env_file: .env
     ports:
       - "${NGINX_HOST_PORT_80}:80"
       - "${NGINX_HOST_PORT_443}:443"
     volumes:
       - ./laravel-app:/var/www
-      - ./flutter-app/build/web:/var/www/flutter
+      - ./web-app:/opt/web-shell:ro
+      - ./project/nginx:/etc/nginx/project:ro
       - app-storage:/var/www/storage
       - certbot-data:/etc/letsencrypt
       - certbot-challenge:/var/www/certbot
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      DOMAIN: ${DOMAIN:-localhost}
     depends_on:
       - app
-      - flutter
     networks:
       - app-network
-
-  cloudflared:
-    image: cloudflare/cloudflared:latest
     restart: unless-stopped
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
-    depends_on:
-      - nginx
-    networks:
-      - app-network
-    profiles:
-      - staging
 
   certbot:
     image: certbot/certbot
     volumes:
       - certbot-data:/etc/letsencrypt
       - certbot-challenge:/var/www/certbot
-    env_file: .env
     command: >
       sh -c "certbot certonly --webroot --webroot-path=/var/www/certbot \
         --email ${CERTBOT_EMAIL} -d ${DOMAIN} --agree-tos --no-eff-email \
@@ -68,6 +160,17 @@ services:
         while true; do certbot renew; sleep 12h; done"
     profiles:
       - production
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    restart: unless-stopped
+    depends_on:
+      - nginx
+    networks:
+      - app-network
+    profiles:
+      - local-tunnel
 
 networks:
   app-network:
@@ -77,3 +180,4 @@ volumes:
   certbot-data:
   certbot-challenge:
   app-storage:
+  mongo-data:
