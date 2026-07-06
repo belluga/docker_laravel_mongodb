@@ -7,14 +7,14 @@ Boilerplate vNext Proof-Time Attestation 2026-07-06
 - Canonical branch under test: `dev`
 
 ## Root Index OIDs Under Test
-- `foundation_documentation`: `c42e6da2f9245a4bd33ce94998c11120b3f5e208`
+- `foundation_documentation`: `71102ec29b1a8735a5bcc5aa945dfb88dfbfc649`
 - `laravel-app`: `861730211babc12674640021f133cf87ba99237b`
 - `web-app`: `4654b57f91333d16296d8edadc74a4ea727d95ef`
 - `flutter-app`: `5d9ecb07c2c8d947115fa47485e4a3d482229e91`
 
 ## Nested HEADs And Clean Status
 - `foundation_documentation`
-  - `HEAD`: `c42e6da2f9245a4bd33ce94998c11120b3f5e208`
+  - `HEAD`: `71102ec29b1a8735a5bcc5aa945dfb88dfbfc649`
   - `status --short --untracked-files=all`: clean
   - `gitlink equality`: matches root index
 - `web-app`
