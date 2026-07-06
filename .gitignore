@@ -21,8 +21,7 @@ gemini_memory.md
 .agent
 .agents
 .codex/
-foundation_documentation/
-foundation_documentation
+foundation_documentation_tmp/
 
 # CLINE
 CLINE.md

@@ -56,6 +56,12 @@ server {
         add_header Cache-Control "no-cache" always;
     }
 
+    location = /build_metadata.json {
+        root /opt/web-shell;
+        try_files $uri =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
     location = /version.json {
         root /opt/web-shell;
         try_files $uri =404;
@@ -64,31 +70,87 @@ server {
 
     # Tenant-aware branding assets are backend-owned even though they look file-like.
     location = /manifest.json {
+        error_page 404 = /__web_shell_placeholder_manifest;
         try_files /__backend_owned_branding__ /index.php?$query_string;
     }
 
     location = /favicon.ico {
+        error_page 404 = /__web_shell_placeholder_favicon;
         try_files /__backend_owned_branding__ /index.php?$query_string;
     }
 
     location ^~ /icon/ {
+        error_page 404 = /__web_shell_placeholder_icon;
         try_files /__backend_owned_branding__ /index.php?$query_string;
     }
 
     location = /logo-dark.png {
+        error_page 404 = /__web_shell_placeholder_logo_dark;
         try_files /__backend_owned_branding__ /index.php?$query_string;
     }
 
     location = /logo-light.png {
+        error_page 404 = /__web_shell_placeholder_logo_light;
         try_files /__backend_owned_branding__ /index.php?$query_string;
     }
 
     location = /icon-dark.png {
+        error_page 404 = /__web_shell_placeholder_icon_dark;
         try_files /__backend_owned_branding__ /index.php?$query_string;
     }
 
     location = /icon-light.png {
+        error_page 404 = /__web_shell_placeholder_icon_light;
         try_files /__backend_owned_branding__ /index.php?$query_string;
+    }
+
+    location = /__web_shell_placeholder_manifest {
+        internal;
+        root /opt/web-shell;
+        try_files /web-manifest.json =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location = /__web_shell_placeholder_favicon {
+        internal;
+        root /opt/web-shell;
+        try_files /favicon.png =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location = /__web_shell_placeholder_icon {
+        internal;
+        root /opt/web-shell;
+        try_files /favicon.png =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location = /__web_shell_placeholder_logo_dark {
+        internal;
+        root /opt/web-shell;
+        try_files /splash/img/dark-4x.png =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location = /__web_shell_placeholder_logo_light {
+        internal;
+        root /opt/web-shell;
+        try_files /splash/img/light-4x.png =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location = /__web_shell_placeholder_icon_dark {
+        internal;
+        root /opt/web-shell;
+        try_files /favicon.png =404;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location = /__web_shell_placeholder_icon_light {
+        internal;
+        root /opt/web-shell;
+        try_files /favicon.png =404;
+        add_header Cache-Control "no-cache" always;
     }
 
     location ^~ /assets/ {
@@ -129,10 +191,6 @@ server {
 
     location ^~ /admin/api/ {
         try_files $uri /index.php?$query_string;
-    }
-
-    location = /environment {
-        return 404;
     }
 
     location = /admin {

@@ -57,20 +57,9 @@ required_root_files=(
   "tools/ci/contracts/main-proof.json"
 )
 
-required_validation_overlay_files=(
-  "project/belluga-validation/ci/stage-full.json"
-  "project/belluga-validation/ci/main-proof.json"
-)
-
 for file in "${required_root_files[@]}"; do
   require_file "${file}" "required root CI/runtime surface missing: ${file}"
 done
-
-if [[ -f docker-compose.validation-belluga.yml ]]; then
-  for file in "${required_validation_overlay_files[@]}"; do
-    require_file "${file}" "required validation-owner surface missing while docker-compose.validation-belluga.yml is active: ${file}"
-  done
-fi
 
 run_guard bash .github/scripts/check_validation_owner_inputs.sh
 
@@ -144,27 +133,22 @@ require_fixed '"path": "root-invariants.json"' tools/ci/contracts/stage-full.jso
   "stage-full manifest must import root-invariants.json."
 require_fixed '"path": "promotion-runtime-builds.json"' tools/ci/contracts/stage-full.json \
   "stage-full manifest must import promotion-runtime-builds.json."
+require_fixed '"path": "root-invariants.json"' tools/ci/contracts/main-proof.json \
+  "main-proof manifest must import root-invariants.json."
+require_fixed '"path": "promotion-runtime-builds.json"' tools/ci/contracts/main-proof.json \
+  "main-proof manifest must import promotion-runtime-builds.json after Belluga Now overlay retirement."
 require_fixed '"id": "generic-base-detether-audit"' tools/ci/contracts/root-invariants.json \
   "root-invariants.json must require the generic-base detether audit as part of the CI-equivalent contract graph."
 require_fixed 'tools/tests/generic_base_detether_audit.sh' tools/ci/contracts/root-invariants.json \
   "root-invariants.json must execute tools/tests/generic_base_detether_audit.sh inside the CI-equivalent contract graph."
-if [[ -f docker-compose.validation-belluga.yml ]]; then
-  require_fixed '"path": "../../../project/belluga-validation/ci/stage-full.json"' tools/ci/contracts/stage-full.json \
-    "stage-full manifest must expose the explicit project-owned Belluga validation contract while the validation-owner override is active."
-  require_fixed '"path": "root-invariants.json"' tools/ci/contracts/main-proof.json \
-    "main-proof manifest must import root-invariants.json."
-  require_fixed '"path": "../../../project/belluga-validation/ci/main-proof.json"' tools/ci/contracts/main-proof.json \
-    "main-proof manifest must keep production-lane blocking semantics on the explicit project-owned validation contract while the validation-owner override is active."
-  require_fixed '"id": "validation-owner-inputs"' project/belluga-validation/ci/stage-full.json \
-    "project/belluga-validation/ci/stage-full.json must fail closed when the validation-owner inputs are not materialized."
-  require_fixed '.github/scripts/check_validation_owner_inputs.sh' project/belluga-validation/ci/stage-full.json \
-    "project/belluga-validation/ci/stage-full.json must execute the validation-owner input guard before compose rendering."
-else
-  forbid_fixed 'belluga-validation/ci/stage-full.json' tools/ci/contracts/stage-full.json \
-    "stage-full manifest must drop the Belluga validation overlay import once docker-compose.validation-belluga.yml is removed."
-  forbid_fixed 'belluga-validation/ci/main-proof.json' tools/ci/contracts/main-proof.json \
-    "main-proof manifest must drop the Belluga validation overlay import once docker-compose.validation-belluga.yml is removed."
-fi
+forbid_fixed 'belluga-validation/ci/stage-full.json' tools/ci/contracts/stage-full.json \
+  "stage-full manifest must not import the retired Belluga Now overlay contract."
+forbid_fixed 'belluga-validation/ci/main-proof.json' tools/ci/contracts/main-proof.json \
+  "main-proof manifest must not import the retired Belluga Now overlay contract."
+forbid_fixed 'docker-compose.validation-belluga.yml' README.md \
+  "README must not document the retired Belluga Now validation overlay after final cutover."
+forbid_fixed 'belluga-validation/ci/' project/README.md \
+  "project/README.md must not document the retired Belluga Now overlay after final cutover."
 
 # checkout_ci_submodules.sh is preserved here as a structural CI checkout helper.
 # It is not part of the local stage-full execution path because it mutates checkout
@@ -188,7 +172,4 @@ require_fixed '`stage-full`: broadest local CI Equivalent at the current root/do
   "README must explain the truthful stage-full boundary."
 require_fixed '`main-proof`: separate production-lane semantic guard;' README.md \
   "README must explain why main-proof stays distinct from stage-full."
-require_fixed 'belluga-validation/ci/' project/README.md \
-  "project/README.md must document the project-owned CI contract overlay surface."
-
 echo "OK: root CI/runtime invariants passed."

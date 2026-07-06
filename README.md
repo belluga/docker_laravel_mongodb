@@ -32,10 +32,8 @@ cp .env.example .env
 
 3. Garanta que o downstream já forneça `laravel-app/` e `web-app/`.
 
-Na lane atual deste repositório, a validação Belluga ainda pode fornecer esses
-inputs por `docker-compose.validation-belluga.yml` + `BELLUGA_VALIDATION_ROOT`.
-Fora desse override temporário, a base continua exigindo um `web-app/`
-materializado localmente.
+Na lane atual deste repositório, `laravel-app/` e `web-app/` locais são as
+sources of truth dos artefatos de aplicação e de CI local.
 
 4. Se precisar de túnel local, crie o arquivo local de segredo:
 
@@ -85,9 +83,9 @@ bash tools/ci/run_contract.sh --list --profile stage-full
 
 Superfícies atuais:
 
-- `stage-full`: broadest local CI Equivalent at the current root/docker boundary; ele agrega invariantes root-owned, preflight de imagens runtime e o overlay explícito de validação Belluga project-owned, sem alegar paridade de successor fronts web/flutter/browser.
-- `stage-full` falha fechado se os inputs Laravel/web shell da validation-owner lane não estiverem materializados antes do `compose config`.
-- `main-proof`: separate production-lane semantic guard; ele permanece fail-closed enquanto `docker-compose.validation-belluga.yml` continuar sendo a surface dona da validação local, então não é prova promotable hoje.
+- `stage-full`: broadest local CI Equivalent at the current root/docker boundary; ele agrega invariantes root-owned e preflight de imagens runtime, sem alegar paridade de successor fronts web/flutter/browser.
+- `stage-full` falha fechado se o `laravel-app/` local ou o `web-app/` local não estiverem materializados antes do `compose config`.
+- `main-proof`: separate production-lane semantic guard; após o cutover final ele preserva o mesmo corpo positivo root-owned de `stage-full`, mas continua sendo a surface explícita de prova para a lane de promoção.
 
 Execução:
 
@@ -116,44 +114,9 @@ Use `project/` para manter identidade específica fora da base compartilhada:
 
 Se `project/nginx/` estiver vazio, o `include /etc/nginx/project/*.conf` é no-op.
 
-## Validação Belluga
+## Cutover Final
 
-`docker-compose.validation-belluga.yml` existe apenas para validar esta extração
-contra inputs Belluga fixados por SHA. Ele não é promotable canon.
-
-O proof autoritativo de `stage-full` agora exige que `BELLUGA_VALIDATION_ROOT`
-aponte para um checkout Git Belluga congelado exatamente nos SHAs declarados em
-`docker-compose.validation-belluga.yml`. O exemplo recomendado desta missão é
-`../belluga_now_docker-freeze`; use o sibling default `../belluga_now_docker`
-só se ele também estiver limpo e exatamente no ref congelado
-`origin/main@1273902de61b158f98c221772e7d41424ce8beb9`.
-
-Esse checkout precisa ser verificável por `git`, estar limpo, e manter os
-inputs filhos `laravel-app/` e `web-app/` materializados exatamente nos SHAs
-congelados do overlay.
-
-Uso:
-
-```bash
-BELLUGA_VALIDATION_ROOT=../belluga_now_docker-freeze \
-APP_ENV=local COMPOSE_PROFILES=local-db \
-docker compose -f docker-compose.yml -f docker-compose.validation-belluga.yml up -d --build
-```
-
-Com checkout Belluga materializado em outro caminho:
-
-```bash
-BELLUGA_VALIDATION_ROOT=/caminho/para/belluga_now_docker-freeze \
-APP_ENV=local COMPOSE_PROFILES=local-db \
-docker compose -f docker-compose.yml -f docker-compose.validation-belluga.yml up -d --build
-```
-
-Com túnel:
-
-```bash
-APP_ENV=local COMPOSE_PROFILES=local-db,local-tunnel \
-docker compose --env-file .env --env-file .env.local.tunnel \
-  -f docker-compose.yml -f docker-compose.validation-belluga.yml up -d --build
-```
-
-Enquanto esse override existir, a lane continua local-validation-only.
+O seam temporário de validação específico do projeto downstream foi retirado da
+base root/docker. A prova local autoritativa agora depende apenas dos
+inputs locais `laravel-app/` e `web-app/`, mais as contracts root-owned em
+`tools/ci/contracts/**`.

@@ -1,6 +1,0 @@
-# Validation-only Belluga runtime class guard list.
-Belluga\Events\Jobs\PublishScheduledEventsJob
-Belluga\Invites\Http\Api\v1\Controllers\InviteFeedController
-App\Providers\PackageIntegration\InvitesIntegrationServiceProvider
-Belluga\Favorites\Contracts\FavoritesRegistryContract
-App\Providers\PackageIntegration\FavoritesIntegrationServiceProvider
