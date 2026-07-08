@@ -1,9 +1,10 @@
 # Title
-Boilerplate vNext Proof-Time Attestation Refresh 2026-07-08
+Boilerplate vNext Proof-Time Attestation Remediation 2026-07-08
 
 ## Scope
 - Root package under test: `docker_laravel_mongodb`
 - Proof date: `2026-07-08`
+- Reviewed root reconcile HEAD: `1c06e9acbf795423129882712a08d958530e9524`
 - Authoritative branch under test: `reconcile/boilerplate-vnext-final-cutover-20260708`
 - Packet-carrier authority: `foundation_documentation/main@5cc3b8d47cbccbe2032e237b6477146e6791e0cf`
 - Refreshed owner-repo candidate pin recorded in the approval packet: `foundation_documentation@245605cffb25598fbb01d5ed08f516b5cb46f0f3`
@@ -34,6 +35,9 @@ Boilerplate vNext Proof-Time Attestation Refresh 2026-07-08
 - Included changed surfaces:
   - root gitlink/index alignment for `foundation_documentation`
   - refreshed proof-time attestation artifact itself
+- `laravel-app` gitlink movement captured in this carrier:
+  - process base `861730211babc12674640021f133cf87ba99237b`
+  - current root gitlink `0a5bb112b64a759d30eab2c557edb8480d23f9e8`
 - Excluded drift confirmation:
   - `flutter-app`: absent from the attested carrier under the explicit carve-out decision recorded in the final-cutover packet set
 - Root workspace helper artifacts excluded from the carrier:
@@ -57,7 +61,7 @@ Boilerplate vNext Proof-Time Attestation Refresh 2026-07-08
 
 ## Results
 - `git rev-parse --abbrev-ref HEAD`: `reconcile/boilerplate-vnext-final-cutover-20260708`
-- `git rev-parse HEAD`: `b4a91e133a3dbeab6cc0e0582a4782f5aa518cc5`
+- `git rev-parse HEAD`: `1c06e9acbf795423129882712a08d958530e9524`
 - `check_validation_owner_inputs.sh`: passed with `OK: local downstream Laravel/web inputs are materialized.`
 - `verify_environment_ci.sh`: passed with `OK: local downstream Laravel/web inputs are materialized.` and `OK: root CI/runtime invariants passed.`
 - `generic_base_detether_audit.sh`: passed with `OVERLAY_FREE_DETETHER_AUDIT_OK`
