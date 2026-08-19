@@ -179,6 +179,14 @@ server {
         try_files /__tenant_public_shell__ /index.php?$query_string;
     }
 
+    location = /open-app {
+        try_files /__tenant_public_shell__ /index.php?$query_string;
+    }
+
+    location = /privacy-policy {
+        try_files /__tenant_public_shell__ /index.php?$query_string;
+    }
+
     include /etc/nginx/project/*.conf;
 
     location ^~ /api/ {

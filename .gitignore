@@ -22,6 +22,7 @@ gemini_memory.md
 .agents
 .codex/
 foundation_documentation_tmp/
+.playwright-mcp/
 
 # CLINE
 CLINE.md

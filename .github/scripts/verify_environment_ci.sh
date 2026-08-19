@@ -34,6 +34,38 @@ require_fixed() {
   fi
 }
 
+require_contract_command() {
+  local path="$1"
+  local entry_id="$2"
+  shift 2
+
+  if ! python3 - "$path" "$entry_id" "$@" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+entry_id = sys.argv[2]
+expected_command = sys.argv[3:]
+
+payload = json.loads(path.read_text(encoding="utf-8"))
+entries = payload.get("entries", [])
+
+for entry in entries:
+    if entry.get("id") == entry_id and entry.get("command") == expected_command:
+        raise SystemExit(0)
+
+print(
+    f"ERROR: {path} must contain the exact contract entry `{entry_id}` with command {expected_command}.",
+    file=sys.stderr,
+)
+raise SystemExit(1)
+PY
+  then
+    exit 1
+  fi
+}
+
 forbid_fixed() {
   local needle="$1"
   local path="$2"
@@ -100,6 +132,8 @@ done
 
 require_fixed './web-app:/opt/web-shell:ro' docker-compose.yml \
   "docker-compose.yml must mount web-app at './web-app:/opt/web-shell:ro' for runtime web-shell parity."
+require_fixed 'FLUTTER_WEB_SHELL_PATH: /opt/web-shell/index.html' docker-compose.yml \
+  "docker-compose.yml must expose FLUTTER_WEB_SHELL_PATH=/opt/web-shell/index.html for backend-rendered public shell parity."
 forbid_fixed './web-app:/var/www/flutter:ro' docker-compose.yml \
   "docker-compose.yml must not mount web-app into /var/www/flutter; nested bind mounts there can hide the runtime bundle."
 
@@ -109,7 +143,7 @@ for nginx_template in docker/nginx/local.conf.template docker/nginx/prod.conf.te
   forbid_fixed 'root /var/www/flutter;' "${nginx_template}" \
     "${nginx_template} must not serve web assets from /var/www/flutter."
   forbid_fixed 'root /opt/flutter-web-shell;' "${nginx_template}" \
-    "${nginx_template} must not regress to the Belluga-specific /opt/flutter-web-shell mount."
+    "${nginx_template} must not regress to the Belluga Now-era /opt/flutter-web-shell mount."
 done
 
 require_fixed '--target runtime-deps' .github/scripts/preflight_promotion_runtime_builds.sh \
@@ -139,8 +173,10 @@ require_fixed '"path": "promotion-runtime-builds.json"' tools/ci/contracts/main-
   "main-proof manifest must import promotion-runtime-builds.json after Belluga Now overlay retirement."
 require_fixed '"id": "generic-base-detether-audit"' tools/ci/contracts/root-invariants.json \
   "root-invariants.json must require the generic-base detether audit as part of the CI-equivalent contract graph."
-require_fixed 'tools/tests/generic_base_detether_audit.sh' tools/ci/contracts/root-invariants.json \
-  "root-invariants.json must execute tools/tests/generic_base_detether_audit.sh inside the CI-equivalent contract graph."
+require_contract_command tools/ci/contracts/root-invariants.json generic-base-detether-audit \
+  bash tools/tests/generic_base_detether_audit.sh
+require_contract_command tools/ci/contracts/root-invariants.json tenant-example-neutralization-guard \
+  bash tools/tests/verify_tenant_example_fixture_neutralization.sh
 forbid_fixed 'belluga-validation/ci/stage-full.json' tools/ci/contracts/stage-full.json \
   "stage-full manifest must not import the retired Belluga Now overlay contract."
 forbid_fixed 'belluga-validation/ci/main-proof.json' tools/ci/contracts/main-proof.json \

@@ -107,6 +107,16 @@ APP_ENV=production COMPOSE_PROFILES=production docker compose up -d --build
 Use `project/` para manter identidade específica fora da base compartilhada:
 
 - `project/nginx/routes.conf.example`: famílias extras de rota antes do fallback SPA.
+  As rotas públicas gerenciadas devem incluir `# public_shell_route_id: <id>`
+  dentro de cada `location` para que o harness de paridade compare NGINX e
+  Laravel pelo mesmo inventário. Endpoints e famílias root-owned como
+  `/open-app`, `/manifest.json` e `/icon/*` ficam fora do overlay do projeto.
+- `project/laravel/public_shell_routes.example.php`: inventário das rotas
+  públicas project-owned consumido pelo allowlist genérico do Laravel. O
+  exemplo de `custom_public_metadata` usa de propósito um
+  `service_container_id` placeholder com prefixo `project.*`; o downstream
+  deve substituir ou bindar esse ID para um serviço próprio que implemente o
+  contrato de extensão de metadata antes de ativar a rota de exemplo.
 - `project/laravel/required_runtime_classes.example.txt`: classes críticas para a
   verificação de autoload no entrypoint.
 - `project/well-known/*.example.json`: exemplos de payload para App Links /
