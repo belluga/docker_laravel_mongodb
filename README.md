@@ -43,6 +43,33 @@ cp .env.local.tunnel.example .env.local.tunnel
 
 `CLOUDFLARE_TUNNEL_TOKEN` fica apenas em `.env.local.tunnel`, não em `.env.example`.
 
+### Domínio landlord e hosts tenant
+
+`DOMAIN` e `laravel-app/.env:APP_URL` representam o mesmo domínio raiz do
+landlord, por exemplo `yourdomain.com` e `https://yourdomain.com`.
+`APP_URL` não deve receber o hostname de um tenant.
+
+O host de um tenant é resolvido separadamente pelo registro no banco:
+
+- `Tenant.subdomain=platform-test` resulta em
+  `platform-test.yourdomain.com` quando o landlord raiz é
+  `yourdomain.com`.
+- Um domínio customizado precisa estar cadastrado em
+  `landlord.domains.path` para o tenant correspondente.
+
+Portanto, DNS wildcard ou ingress do túnel apenas tornam o host alcançável;
+eles não criam o vínculo do tenant no banco.
+
+### Configuracao mobile neutra
+
+O boilerplate nao exige configuracao real de Android ou iOS, como IDs de
+aplicativo, URLs de loja ou publicacao mobile. Sem uma politica mobile fornecida
+pelo downstream, o endpoint generico `/open-app` preserva o alvo web original.
+
+Uma aplicacao downstream pode publicar sua propria politica e fallback de
+promocao, mas essa configuracao nao deve ser criada artificialmente no banco
+ou tratada como requisito do runner generico.
+
 ## Execução local
 
 Com Mongo local:
