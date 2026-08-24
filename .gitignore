@@ -21,6 +21,7 @@ gemini_memory.md
 .agent
 .agents
 .codex/
+.delphi-locks/
 foundation_documentation_tmp/
 .playwright-mcp/
 
