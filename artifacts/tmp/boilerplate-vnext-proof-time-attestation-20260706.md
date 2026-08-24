@@ -1,83 +1,91 @@
 # Title
-Boilerplate vNext Proof-Time Attestation Refresh 2026-07-12
+Boilerplate vNext Proof-Time Attestation Refresh 2026-08-24
 
 ## Scope
 - Root package under test: `docker_laravel_mongodb`
-- Proof date: `2026-07-12`
-- Reviewed root reconcile HEAD: `80bc4c2f720db956b1d7f7ee217a23432b3f6238`
+- Proof date: `2026-08-24`
 - Authoritative branch under test: `reconcile/boilerplate-vnext-final-cutover-20260708`
-- Root-pinned owner baseline under test: `foundation_documentation@5cc3b8d47cbccbe2032e237b6477146e6791e0cf`
-- Newer owner-repo review baseline held outside this attested current-pin carrier: `foundation_documentation/main@448555ac52f93d8342e1ecb75054a81a6d535631`
-- Carrier shape: `final-cutover + current-pin clean attestation`
+- Authoritative root commit under test: `e92c56e65f7317254ea12103627f1e53247b1d9a`
+- Replay-equivalent source branches: `process/boilerplate-vnext-genericization@e92c56e65f7317254ea12103627f1e53247b1d9a`, `dev@e92c56e65f7317254ea12103627f1e53247b1d9a`
+- Carrier shape: `final-detether current replay + proof-time broad gates`
 
 ## Root Index OIDs Under Test
-- `foundation_documentation`: `5cc3b8d47cbccbe2032e237b6477146e6791e0cf`
-- `laravel-app`: `0a5bb112b64a759d30eab2c557edb8480d23f9e8`
-- `web-app`: `4654b57f91333d16296d8edadc74a4ea727d95ef`
-- `flutter-app`: `5d9ecb07c2c8d947115fa47485e4a3d482229e91`
+| Path | Root gitlink OID |
+| --- | --- |
+| `foundation_documentation` | `d54818956b4fb54accfce20a25f6370bf555bd7d` |
+| `flutter-app` | `c9fbacfb3cf5c46ea5086ac7118d22b10338fbf8` |
+| `laravel-app` | `a0124b0dbdd8e1254ebe4b2986f1640f49f3d48c` |
+| `web-app` | `af309c13e9b560e12e1f2b471bda47e78c8ba86a` |
 
-## Attested Clean Runtime Inputs
-- `foundation_documentation`
-  - `HEAD`: `5cc3b8d47cbccbe2032e237b6477146e6791e0cf`
-  - `status --short --untracked-files=all`: clean
-  - `gitlink equality`: matches the exact root index OID under test
-- `web-app`
-  - `HEAD`: `4654b57f91333d16296d8edadc74a4ea727d95ef`
-  - `status --short --untracked-files=all`: clean
-  - `gitlink equality`: matches the exact root index OID under test
-- `laravel-app`
-  - `HEAD`: `0a5bb112b64a759d30eab2c557edb8480d23f9e8`
-  - `status --short --untracked-files=all`: clean
-  - `runtime-input note`: this is the exact clean backend runtime input exercised by the proof
-- `flutter-app`
-  - excluded from the attested carrier under the explicit delivered-proof carve-out for `ST-04` / `ST-02`
-  - parked local residue included tracked delivered-proof drift plus helper residue under `.agent/**` and `scripts`
-- Root helper dirt parked out of the attested carrier:
-  - `artifacts/tmp/boilerplate-vnext-proof-time-attestation-20260706.md`
-  - `artifacts/tmp/boilerplate-vnext-proof-time-attestation-refresh-template-20260706.md`
-  - `.playwright-mcp/**`
+## Local Inputs Exercised Or Recorded
+| Surface | Proof-time local HEAD | Tracked status | Proof role |
+| --- | --- | --- | --- |
+| `foundation_documentation` | `8b9ece582841f91eadf1d2b39a765754cff0f181` | clean tracked tree; pre-existing untracked `artifacts/tmp/**` and `todos/ephemeral/**` outside runtime proof | reference authority only; not a runtime/source promotion blocker |
+| `laravel-app` | `aba9fd3c3108472634e78396ea060f024a2e53e8` | clean | backend source copied into the Docker runtime build and exercised by `stage-full` / `main-proof` |
+| `flutter-app` | `908dba3b74274ca601758bd11de202c0f10d8395` | clean | source-promotion candidate recorded for the Docker handoff; not rebuilt by this root proof |
+| `web-app` | `af309c13e9b560e12e1f2b471bda47e78c8ba86a` | clean | derived static web publication; matches the root gitlink OID |
 
-## Reversible Attestation Preparation
-- Root helper dirt was parked with `git stash push -u -m "final-cutover-root-attestation-park-20260712" -- ...`
-- `foundation_documentation` local doc/TODO dirt was parked with `git -C foundation_documentation stash push -u -m "final-cutover-foundation-attestation-park-20260712"`
-- `foundation_documentation` was checked back to the already-pinned owner baseline `5cc3b8d47cbccbe2032e237b6477146e6791e0cf`
-- `flutter-app` delivered-proof drift plus helper residue was parked with `git -C flutter-app stash push -u -m "final-cutover-flutter-attestation-park-20260712"`
-- Cleanliness was verified before proof across root plus `foundation_documentation`, `laravel-app`, `web-app`, and `flutter-app`
+## Post-Proof Documentation Closeout
+- `foundation_documentation` closeout commit: `3a2e60d68bd4e21af7ac9dae362c267319aa6cc5`.
+- Classification: docs/reference-only publication after the proof-time broad gates.
+- Invalidation decision: no product-code, runtime, build/publish, compose, CI-contract, or source-promotion surface changed; the `stage-full` and `main-proof` reports above remain valid for root commit `e92c56e65f7317254ea12103627f1e53247b1d9a`.
+- Root gitlink policy: no manual repin; root gitlinks remain pipeline-owned.
+
+## Runtime Boundary
+- Root tracked status before documentation/report publication: clean.
+- Root untracked capture-time surfaces: `.delphi-locks/laravel-tests-safe.lock` and the two new CI-contract JSON reports.
+- `docker-compose.validation-belluga.yml`: absent.
+- `project/belluga-validation/**`: zero files.
+- `docker compose ps`: `app` and `mongo` healthy; `nginx`, `worker`, `scheduler`, and `cloudflared` running.
+- Mongo host port: `27018 -> 27017`.
+- Nginx host ports: `8090 -> 80`, `8091 -> 443`.
 
 ## Commands Exercised
+- `bash delphi-ai/verify_context.sh`
+- `docker compose config --quiet`
+- `docker compose ps`
 - `git rev-parse --abbrev-ref HEAD`
 - `git rev-parse HEAD`
 - `git status --short --untracked-files=all`
-- `git -C foundation_documentation status --short --untracked-files=all`
+- `git ls-files --stage foundation_documentation laravel-app flutter-app web-app`
+- `git -C foundation_documentation rev-parse HEAD`
+- `git -C foundation_documentation status --short --untracked-files=no`
+- `git -C laravel-app rev-parse HEAD`
 - `git -C laravel-app status --short --untracked-files=all`
-- `git -C web-app status --short --untracked-files=all`
+- `git -C flutter-app rev-parse HEAD`
 - `git -C flutter-app status --short --untracked-files=all`
-- `git ls-files --stage foundation_documentation laravel-app web-app flutter-app`
-- `APP_ENV=local COMPOSE_PROFILES=local-db docker compose up -d --build`
-- `APP_ENV=local COMPOSE_PROFILES=local-db MONGO_HOST_PORT=27018 docker compose up -d --build`
-- `MONGO_HOST_PORT=27018 docker compose ps`
-- `bash .github/scripts/check_validation_owner_inputs.sh`
-- `bash .github/scripts/verify_environment_ci.sh`
-- `bash tools/tests/generic_base_detether_audit.sh`
-- `bash tools/ci/run_contract.sh --profile stage-full`
-- `bash tools/ci/run_contract.sh --profile main-proof`
-- `docker compose exec -T app php artisan test tests/Feature/PublicWeb/PublicWebShellRouteTest.php tests/Feature/Initialization/InitializationControllerTest.php tests/Feature/Push/PushMessageFlowTest.php tests/Feature/Favorites/FavoriteDirectReadQueryContractTest.php tests/Feature/Taxonomies/TaxonomyRegistryControllerTest.php tests/Unit/Queue/TenantAwareQueueJobsTest.php tests/Unit/Config/QueueAndLoggingConfigGuardrailTest.php`
+- `git -C web-app rev-parse HEAD`
+- `git -C web-app status --short --untracked-files=all`
+- `git rev-list --left-right --count reconcile/boilerplate-vnext-final-cutover-20260708...process/boilerplate-vnext-genericization`
+- `git rev-list --left-right --count process/boilerplate-vnext-genericization...dev`
+- `git rev-list --left-right --count dev...origin/dev`
+- `bash tools/ci/run_contract.sh --profile stage-full --report artifacts/tmp/boilerplate-vnext-final-detether-stage-full-20260824.json`
+- `bash tools/ci/run_contract.sh --profile main-proof --report artifacts/tmp/boilerplate-vnext-final-detether-main-proof-20260824.json`
 
-## Results
-- `git rev-parse --abbrev-ref HEAD`: `reconcile/boilerplate-vnext-final-cutover-20260708`
-- `git rev-parse HEAD`: `80bc4c2f720db956b1d7f7ee217a23432b3f6238`
-- Initial canonical local-db bring-up on host port `27017`: blocked with `Bind for 0.0.0.0:27017 failed: port is already allocated`
-- Supported local-db retry on `MONGO_HOST_PORT=27018`: passed; `docker compose ps` showed `app` healthy, `mongo` healthy, and `nginx`, `worker`, plus `scheduler` up
-- `check_validation_owner_inputs.sh`: passed with `OK: local downstream Laravel/web inputs are materialized.`
-- `verify_environment_ci.sh`: passed with `OK: local downstream Laravel/web inputs are materialized.` and `OK: root CI/runtime invariants passed.`
-- `generic_base_detether_audit.sh`: passed with `OVERLAY_FREE_DETETHER_AUDIT_OK`
-- `stage-full`: passed with `root-invariant-guard`, `generic-base-detether-audit`, and `promotion-runtime-builds-stage` all passing
-- `main-proof`: passed with `root-invariant-guard`, `generic-base-detether-audit`, and `promotion-runtime-builds-stage` all passing
-- Laravel bounded proof suite: `95 passed (325 assertions)`
+## Broad Gate Results
+| Contract | Report | SHA-256 | Result |
+| --- | --- | --- | --- |
+| `stage-full` | `artifacts/tmp/boilerplate-vnext-final-detether-stage-full-20260824.json` | `18c62bbdaecd003eeb0f995b696ade4d88460367f91c5d3420ed1d12ea48c0e0` | `passed` |
+| `main-proof` | `artifacts/tmp/boilerplate-vnext-final-detether-main-proof-20260824.json` | `09d4db39eb605c189ef19b1f7aaa827b46a5e7cbd80c4548d0aa7188b2e69ebb` | `passed` |
+
+Both reports executed the same frozen positive body:
+- `root-invariant-guard`: `bash .github/scripts/verify_environment_ci.sh`
+- `generic-base-detether-audit`: `bash tools/tests/generic_base_detether_audit.sh`
+- `tenant-example-neutralization-guard`: `bash tools/tests/verify_tenant_example_fixture_neutralization.sh`
+- `promotion-runtime-builds-stage`: `bash .github/scripts/preflight_promotion_runtime_builds.sh stage`
+
+## Replay Freshness
+| Check | Result |
+| --- | --- |
+| `reconcile/boilerplate-vnext-final-cutover-20260708...process/boilerplate-vnext-genericization` | `0 0` |
+| `process/boilerplate-vnext-genericization...dev` | `0 0` |
+| `dev...origin/dev` | `0 0` |
 
 ## Attestation Outcome
-- The approved narrower current-pin path succeeded against the already-pinned owner baseline `foundation_documentation@5cc3b8d47cbccbe2032e237b6477146e6791e0cf`.
-- `foundation_documentation` and `web-app` matched the exact root gitlink OIDs under test.
-- `laravel-app` was recorded as the clean backend runtime input exercised by the proof.
-- Belluga Now downstream parity was preserved during the proof run by leaving the live downstream stack on host port `27017` and using the supported boilerplate override `MONGO_HOST_PORT=27018`.
-- Any future move from the current root pin to the newer owner baseline `448555ac52f93d8342e1ecb75054a81a6d535631` still requires the separate broader owner-pin approval path plus a fresh attestation on that repin.
+- The current root carrier is overlay-free and replay-equivalent across `reconcile`, `process`, and `dev` at `e92c56e65f7317254ea12103627f1e53247b1d9a`.
+- The broad local contracts `stage-full` and `main-proof` passed on the principal checkout with only generic local `laravel-app` and `web-app` inputs.
+- `laravel-app@aba9fd3c3108472634e78396ea060f024a2e53e8` is the backend source input exercised by the proof-time Docker build.
+- `web-app@af309c13e9b560e12e1f2b471bda47e78c8ba86a` is the derived static web input and matches the root gitlink.
+- `flutter-app@908dba3b74274ca601758bd11de202c0f10d8395` is the clean Flutter source-promotion candidate recorded for follow-through; it is not rebuilt by this root proof.
+- `foundation_documentation@8b9ece582841f91eadf1d2b39a765754cff0f181` was the proof-time reference input; `foundation_documentation@3a2e60d68bd4e21af7ac9dae362c267319aa6cc5` is the post-proof completed-TODO documentation publication and does not gate runtime/source proof.
+- No `dev -> stage`, `stage -> main`, or production promotion was executed by this attestation.
