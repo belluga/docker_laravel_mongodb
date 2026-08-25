@@ -1,0 +1,16 @@
+{
+  "schema_version": "ci-contract-v1",
+  "contract_id": "stage-full",
+  "description": "Broadest local CI Equivalent contract for the current root/docker boundary: root-owned invariants plus runtime preflight builds. Successor-front web/flutter/browser parity remains deferred.",
+  "imports": [
+    {
+      "repo": "root",
+      "path": "root-invariants.json"
+    },
+    {
+      "repo": "root",
+      "path": "promotion-runtime-builds.json"
+    }
+  ],
+  "entries": []
+}

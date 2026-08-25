@@ -1,0 +1,3 @@
+project_event	/project-events/	one_segment	event_metadata
+project_landing	/project-entry	exact	shell
+project_profile	/project-profiles/	one_segment	account_profile_metadata

@@ -1,0 +1,16 @@
+{
+  "schema_version": "ci-contract-v1",
+  "contract_id": "main-proof",
+  "description": "Separate production-lane semantic guard for the current root/docker boundary, using the same positive root-owned proof body as stage-full after project-specific overlay retirement.",
+  "imports": [
+    {
+      "repo": "root",
+      "path": "root-invariants.json"
+    },
+    {
+      "repo": "root",
+      "path": "promotion-runtime-builds.json"
+    }
+  ],
+  "entries": []
+}

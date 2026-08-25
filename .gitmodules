@@ -1,8 +1,16 @@
 [submodule "flutter-app"]
 	path = flutter-app
-	url = https://github.com/belluga/flutter_laravel_backend_boilerplate
-	ignore=all
+	url = https://github.com/belluga/flutter_laravel_backend_boilerplate.git
+	ignore = all
 [submodule "laravel-app"]
 	path = laravel-app
-	url = https://github.com/belluga/laravel_mongodb_boilerplate
-	ignore=all
+	url = https://github.com/belluga/laravel_mongodb_boilerplate.git
+	ignore = all
+[submodule "foundation_documentation"]
+	path = foundation_documentation
+	url = https://github.com/belluga/belluga_boilerplate_foundation_documentation.git
+	ignore = all
+[submodule "web-app"]
+	path = web-app
+	url = https://github.com/belluga/boilerplate_web.git
+	ignore = all
