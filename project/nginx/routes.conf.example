@@ -1,0 +1,24 @@
+# Copy this file to a new *.conf overlay when your downstream project needs
+# project-owned public-shell routes handled before the generic SPA fallback.
+# Keep generic root-owned endpoints and families such as `/`, `/privacy-policy`,
+# `/open-app`, `/manifest.json`, and `/icon/*` out of this overlay.
+
+location = /project-entry {
+    # public_shell_route_id: project_landing
+    try_files /__tenant_public_shell__ /index.php?$query_string;
+}
+
+location ^~ /project-profiles/ {
+    # public_shell_route_id: project_profile
+    try_files /__tenant_public_shell__ /index.php?$query_string;
+}
+
+location ^~ /project-events/ {
+    # public_shell_route_id: project_event
+    try_files /__tenant_public_shell__ /index.php?$query_string;
+}
+
+location = /project-campaign {
+    # public_shell_route_id: project_custom_metadata
+    try_files /__tenant_public_shell__ /index.php?$query_string;
+}

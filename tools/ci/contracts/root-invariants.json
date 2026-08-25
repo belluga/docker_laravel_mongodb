@@ -1,0 +1,31 @@
+{
+  "schema_version": "ci-contract-v1",
+  "contract_id": "root-invariants",
+  "description": "Mandatory root invariants that every local CI-equivalent contract must preserve at the current root/docker boundary.",
+  "entries": [
+    {
+      "id": "root-invariant-guard",
+      "repo": "root",
+      "kind": "mandatory-root-invariant",
+      "cwd": "../../..",
+      "command": ["bash", ".github/scripts/verify_environment_ci.sh"],
+      "description": "Fail closed when root workflow/runtime/parity invariants drift."
+    },
+    {
+      "id": "generic-base-detether-audit",
+      "repo": "root",
+      "kind": "mandatory-root-invariant",
+      "cwd": "../../..",
+      "command": ["bash", "tools/tests/generic_base_detether_audit.sh"],
+      "description": "Fail closed when project-specific validation markers leak back into generic-root surfaces."
+    },
+    {
+      "id": "tenant-example-neutralization-guard",
+      "repo": "root",
+      "kind": "mandatory-root-invariant",
+      "cwd": "../../..",
+      "command": ["bash", "tools/tests/verify_tenant_example_fixture_neutralization.sh"],
+      "description": "Fail closed when named tenant/example residue or non-placeholder password-bearing fixtures return to the generic package."
+    }
+  ]
+}
